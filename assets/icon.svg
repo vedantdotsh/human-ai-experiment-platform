@@ -1,4 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#db2777"/>
-  <text x="32" y="32" dy="0.35em" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="26" font-weight="600" fill="#ffffff">PS</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Three linked participants">
+  <rect width="64" height="64" rx="14" fill="#0f766e"/>
+  <path d="M32 19 L19 43 H45 Z" fill="none" stroke="#99f6e4" stroke-width="2.5" stroke-linejoin="round"/>
+  <g fill="#ffffff" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" text-anchor="middle">
+    <circle cx="32" cy="19" r="9"/>
+    <circle cx="19" cy="43" r="9"/>
+    <circle cx="45" cy="43" r="9"/>
+  </g>
+  <g fill="#0f766e" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" text-anchor="middle">
+    <text x="32" y="19" dy="0.35em">A</text>
+    <text x="19" y="43" dy="0.35em">B</text>
+    <text x="45" y="43" dy="0.35em">C</text>
+  </g>
 </svg>
