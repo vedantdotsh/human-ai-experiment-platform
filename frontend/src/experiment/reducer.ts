@@ -13,6 +13,8 @@ export type Session = {
   ownVote: string | null;
   vote1Totals: Totals | null;
   results: Results | null;
+  /** Full length of the current phase in ms, known when this tab saw it start. */
+  phaseLength: number | null;
 };
 
 export type State = {
@@ -88,6 +90,9 @@ function applyServer(state: State, message: ServerMessage): State {
           ownVote: message.own_vote,
           vote1Totals: message.vote1_totals,
           results: message.results,
+          // A snapshot carries only the deadline, so keep the length seen at phase start.
+          phaseLength:
+            state.session?.phaseSeq === message.phase_seq ? state.session.phaseLength : null,
         },
       };
     case "phase.changed":
@@ -102,6 +107,7 @@ function applyServer(state: State, message: ServerMessage): State {
           round: message.round,
           phaseSeq: message.phase_seq,
           deadline: message.deadline,
+          phaseLength: message.deadline === null ? null : message.deadline - message.server_time,
           // Each voting round starts with no ballots; other phases show none.
           ballotsCast: message.phase === "voting" ? 0 : null,
           ownVote: null,

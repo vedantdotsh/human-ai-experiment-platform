@@ -90,6 +90,7 @@ The browser uses server time and deadlines to display the countdown. The server 
 | Start a few random seconds after the last human connects | A scheduled start time | A participant who waits a long time can tell that at least one other player is a human, because the run starts only once the humans arrive. A scheduled start time would hide this in a real deployment, but the tab demo needs prompt starts. |
 | Show per-player vote totals after round 1 and at the end | Show only the winner | A voter can sometimes work out other ballots by subtracting their own vote from the totals, which is accepted. Showing only the winner would hide this, but the totals give round 2 something to discuss. |
 | No self votes by default (`allow_self_vote: false`) | Allow players to vote for themselves | I chose no self votes because it forces players to persuade each other and the alternative let everyone pick themselves and leave the result to chance. |
+| An engaging look (option H: breathing waiting shape, countdown ring, animated vote reveal and podium) | A neutral, plain interface | I chose an engaging look over a neutral one; a real study would probably tone down the result reveal. |
 
 ## Six build steps
 

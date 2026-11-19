@@ -13,18 +13,19 @@ export function App() {
     session.ownLabel !== null;
 
   return (
-    <main>
-      <h1>Experiment</h1>
-      {started ? (
-        <ExperimentView state={{ ...state, session }} onSend={sendMessage} onVote={sendVote} />
-      ) : (
-        <WaitingRoom
-          status={state.status}
-          error={state.error}
-          onLeave={() => void leaveWaitingRoom()}
-          onJoin={() => void claim()}
-        />
-      )}
-    </main>
+    <div className={`app-shell${started ? "" : " is-centered"}`}>
+      <main className="stage" aria-live="polite">
+        {started ? (
+          <ExperimentView state={{ ...state, session }} onSend={sendMessage} onVote={sendVote} />
+        ) : (
+          <WaitingRoom
+            status={state.status}
+            error={state.error}
+            onLeave={() => void leaveWaitingRoom()}
+            onJoin={() => void claim()}
+          />
+        )}
+      </main>
+    </div>
   );
 }

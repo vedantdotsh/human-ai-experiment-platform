@@ -6,6 +6,7 @@ word, including typos and odd spacing. No credentials and no participant chat ar
 recorded here.
 
 Contents: [Planner](#planner) · [Builder](#builder) · [Reviewer](#reviewer) ·
+[UI builder](#ui-builder) ·
 [Application: the AI players](#application-the-ai-players)
 
 ## Planner
@@ -294,6 +295,94 @@ second the bot question: ask it three times in one run with the key and tell me 
 add the results to the step 05 review file
 
 tell me if it is ready for step 6
+```
+
+## UI builder
+
+| | |
+| --- | --- |
+| Model | Claude Opus 5.5 (`claude-opus-5-5`) |
+| Tool | Claude Code (Claude Agent SDK harness), run inside T3 Code |
+
+After the six build steps, a separate session rebuilt the look of the frontend from
+`ui-prototypes/option-h.html`. These are the owner's messages to it, word for word.
+The first was interrupted while the builder was reading the design file; the second
+pointed it back to that file.
+
+### UI prompt 1: build the real UI from option H
+
+```text
+another agent built this app in six steps and it works
+
+read the plan file and the readme first and look at the frontend folder before you change anything
+
+your job is only the look of the app
+
+in the ui prototypes folder there is a file called option h
+
+use that html file as the design and build the real ui from it
+
+what to take from option h:
+
+only the look which means the layout, the colours, the elements and the animations
+
+what to leave out:
+
+everything fake in it: the fake messages, the fake data, the fake countdown, the prototype bar and its demo javascript
+
+the app decides what is on the screen and not the prototype
+
+if option h shows something the app does not have, remove it and do not build new features for it
+
+if the app has something option h does not show, keep it and design it in the same style
+
+go through every screen and state the app has now and make sure each one is still there after your change
+
+what must not change:
+
+nothing on the backend and no message between the server and the page
+
+every message, number, name and timer on the screen still comes from the real server
+
+if something in option h cannot be done without changing the backend, stop and tell me and do not change it
+
+rules to keep:
+
+the waiting room shows only waiting for other participants and the leave button and the breathing shape
+
+nothing shows or hints who is an ai so no typing or online indicators
+
+every chat message looks and animates the same way no matter who sent it
+
+the vote buttons are the same size and colour and come from the list the server sends, which can be two or three buttons depending on the self vote setting
+
+only totals are shown and never who voted for whom
+
+real chat messages can be longer than the samples so long text must wrap and not break the layout
+
+animations turn off when the device asks for reduced motion
+
+react with plain css and no ui library
+
+when the ui is done:
+
+add one row to the decision table in the plan file and the readme: i chose an engaging look over a neutral one and a real study would probably tone down the result reveal
+
+add yourself to the ai prompts file with this prompt word for word and your exact model and tool
+
+run one full session in the browser with three tabs at desktop width and at phone width against the real backend and show me screenshots of every screen
+
+tell me what you removed from option h and what you added that was not in it
+
+run the three winner tests
+
+commit when it works then stop
+```
+
+### UI prompt 2: follow-up after the interruption
+
+```text
+/home/sandbox/.t3/projects/p2aieval-sol6-2/ui-prototypes/option-h.html here is the ui file
 ```
 
 ## Application: the AI players

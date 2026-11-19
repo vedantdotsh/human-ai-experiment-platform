@@ -1,0 +1,52 @@
+/* Styles for app states and elements that option H does not show, in its style. */
+
+#root { min-height: 100svh; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* Joining (before a seat is claimed): a single muted line. */
+.joining-note { margin: 0; font-size: 16px; font-weight: 500; color: var(--muted); }
+
+/* Vote stage header: round, identity and a compact timer (option H shows none in voting). */
+.vote-stage .round-meta { margin-bottom: 22px; }
+.countdown-hero.is-sm { width: 88px; height: 88px; margin: 0; }
+.countdown-hero.is-sm .countdown-digits { font-size: 22px; }
+.countdown-hero.is-sm .countdown-label { font-size: 10px; margin-top: 1px; }
+.countdown-hero.is-sm .countdown-track,
+.countdown-hero.is-sm .countdown-progress { stroke-width: 10; }
+
+/* Tiles: one column per option the server sends (two or three). */
+.vote-tiles { grid-template-columns: repeat(var(--options, 2), minmax(0, 1fr)); }
+
+/* Results header keeps the player's own identity visible. */
+.results-head { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.results-stage > .card,
+.results-stage > .podium-wrap { width: 100%; }
+
+/* Rejected-action notice, e.g. a late message or a second ballot. */
+.notice {
+  margin: 12px 0 0; padding: 8px 14px; border-radius: var(--radius-pill);
+  background: var(--amber-soft); color: #92400e; font-size: 14px; font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.chat-card .notice { margin: 0 16px 14px; align-self: flex-start; }
+
+/* Chat closed (voting and results): composer stays visible but disabled. */
+.chat-closed-note { margin: 0; padding: 0 16px 14px; font-size: 13px; color: var(--muted); background: #fcfbf9; }
+.chat-empty { margin: auto 0; text-align: center; font-size: 14px; color: var(--muted); }
+.chat-input:disabled { background: var(--surface-subtle); cursor: not-allowed; }
+
+/* Spacing between stacked cards on the run screens. */
+.stage > .card + .card,
+.stage > .vote-stage + .card,
+.stage > .results-stage + .card { margin-top: 16px; }
+.stage > .totals-card { margin-bottom: 0; }
+
+@media (max-width: 600px) {
+  .vote-tiles { grid-template-columns: 1fr; }
+  .countdown-hero.is-sm { width: 76px; height: 76px; }
+  .countdown-hero.is-sm .countdown-digits { font-size: 19px; }
+}

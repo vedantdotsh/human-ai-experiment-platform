@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import { join, leave } from "../session/api";
 import { openSocket, type Socket } from "../realtime/socket";
+import { rememberPhaseLength } from "./phaseClock";
 import { initialState, reduce } from "./reducer";
 
 export function useExperiment() {
@@ -8,6 +9,11 @@ export function useExperiment() {
   const socket = useRef<Socket | null>(null);
   const phaseSeq = useRef(0);
   phaseSeq.current = state.session?.phaseSeq ?? 0;
+
+  const phaseLength = state.session?.phaseLength ?? null;
+  useEffect(() => {
+    if (phaseLength !== null) rememberPhaseLength(phaseSeq.current, phaseLength);
+  }, [phaseLength]);
 
   const claim = useCallback(async () => {
     dispatch({ type: "joining" });
