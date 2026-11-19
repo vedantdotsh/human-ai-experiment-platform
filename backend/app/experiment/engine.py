@@ -244,7 +244,7 @@ class Engine:
                 return None
             cur = await c.execute(
                 """
-                SELECT e.seq, e.ts, e.payload, p.slot
+                SELECT e.ts, e.payload, p.slot
                   FROM experiment_events e JOIN participants p ON p.id = e.actor_id
                  WHERE e.session_id = %s AND e.event_type = 'message' ORDER BY e.seq
                 """,
@@ -262,13 +262,13 @@ class Engine:
             "own_label": LABELS[row["slot"]] if started else None,
             "messages": [
                 {
-                    "seq": m["seq"],
+                    "number": number,
                     "author": LABELS[m["slot"]],
                     "round": m["payload"]["round"],
                     "text": m["payload"]["text"],
                     "ts": _ms(m["ts"]),
                 }
-                for m in messages
+                for number, m in enumerate(messages, start=1)
             ],
         }
 

@@ -57,18 +57,27 @@ class MessageService:
                 if now_ms >= row["phase_deadline"].timestamp() * 1000:
                     raise Rejected("too_late")
                 _, round_number = phase_at(row["phase_seq"])
-                seq, ts = await append_event(
+                _, ts = await append_event(
                     conn,
                     session_id,
                     "message",
                     participant_id,
                     {"round": round_number, "text": text},
                 )
+                # Counts chat only, so it reveals nothing about joins or disconnects.
+                cur = await conn.execute(
+                    """
+                    SELECT count(*) AS n FROM experiment_events
+                     WHERE session_id = %s AND event_type = 'message'
+                    """,
+                    (session_id,),
+                )
+                number = (await cur.fetchone())["n"]
             self._hub.broadcast(
                 session_id,
                 {
                     "type": "message.created",
-                    "seq": seq,
+                    "number": number,
                     "author": LABELS[row["slot"]],
                     "round": round_number,
                     "text": text,

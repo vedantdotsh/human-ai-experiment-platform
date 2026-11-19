@@ -90,7 +90,7 @@ function applyServer(state: State, message: ServerMessage): State {
         },
       };
     case "message.created": {
-      if (!state.session || state.session.messages.some((m) => m.seq === message.seq)) return state;
+      if (!state.session || state.session.messages.some((m) => m.number === message.number)) return state;
       const { type: _type, ...chat } = message;
       return { ...state, session: { ...state.session, messages: [...state.session.messages, chat] } };
     }

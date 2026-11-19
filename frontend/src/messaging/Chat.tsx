@@ -24,7 +24,7 @@ export function Chat({ messages, ownLabel, open, notice, onSend }: Props) {
       <h2>Chat</h2>
       <ul aria-label="chat history">
         {messages.map((m) => (
-          <li key={m.seq}>
+          <li key={m.number}>
             [Round {m.round}] {m.author}
             {m.author === ownLabel ? " (you)" : ""}: {m.text}
           </li>

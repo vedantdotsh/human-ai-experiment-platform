@@ -21,7 +21,8 @@ export type ServerMessage =
   | { type: "action.rejected"; action: string; reason: string };
 
 export type ChatMessage = {
-  seq: number;
+  /** 1-based count of chat messages in this run. */
+  number: number;
   author: string;
   round: number;
   text: string;
