@@ -8,6 +8,10 @@ export type ServerMessage =
       deadline: number | null;
       own_label: string | null;
       messages: ChatMessage[];
+      ballots_cast: number | null;
+      own_vote: string | null;
+      vote1_totals: Totals | null;
+      results: Results | null;
     }
   | {
       type: "phase.changed";
@@ -18,7 +22,14 @@ export type ServerMessage =
       deadline: number | null;
     }
   | ({ type: "message.created" } & ChatMessage)
+  | { type: "vote.recorded"; round: number; target: string }
+  | { type: "vote.progress"; round: number; ballots_cast: number }
+  | { type: "vote.summary"; round: number; totals: Totals }
+  | ({ type: "results.ready" } & Results)
   | { type: "action.rejected"; action: string; reason: string };
+
+export type Totals = Record<string, number>;
+export type Results = { winner: string; totals: Totals };
 
 export type ChatMessage = {
   /** 1-based count of chat messages in this run. */

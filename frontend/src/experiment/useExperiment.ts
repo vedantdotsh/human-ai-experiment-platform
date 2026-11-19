@@ -47,5 +47,9 @@ export function useExperiment() {
     socket.current?.send({ type: "message.send", text, expected_phase_seq: phaseSeq.current });
   }, []);
 
-  return { state, claim, leaveWaitingRoom, sendMessage };
+  const sendVote = useCallback((target: string) => {
+    socket.current?.send({ type: "vote.submit", target, expected_phase_seq: phaseSeq.current });
+  }, []);
+
+  return { state, claim, leaveWaitingRoom, sendMessage, sendVote };
 }

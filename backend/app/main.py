@@ -16,6 +16,7 @@ from app.realtime.routes import router as realtime_router
 from app.session.config import load_config
 from app.session.routes import router as session_router
 from app.session.service import SeatService
+from app.voting.service import VoteService
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 CONFIG_PATH = os.environ.get("CONFIG_PATH", "/srv/config.yml")
@@ -39,8 +40,10 @@ async def lifespan(app: FastAPI):
     hub = Hub()
     seats = SeatService(pool, config)
     app.state.seats = seats
-    app.state.engine = Engine(pool, config, seats, hub)
+    engine = Engine(pool, config, seats, hub)
+    app.state.engine = engine
     app.state.messages = MessageService(pool, seats, hub)
+    app.state.votes = VoteService(pool, seats, hub, engine.early_close)
     yield
     await app.state.engine.shutdown()
     await pool.close()

@@ -22,8 +22,17 @@ after a random delay, and each player first learns their own label ("Player A/B/
 at that moment. The run then goes: round 1 discussion, round 1 voting, round 2
 discussion, round 2 voting, results. The server owns the clock, so it advances
 even with every tab closed; a player who disconnects mid-run keeps their seat and
-the run continues. Chat is open only during discussion. (Ballots and the winner
-arrive in a later step; this build ends at an empty results phase.)
+the run continues. Chat is open only during discussion.
+
+During each voting phase a player casts one ballot for any of the three players
+(themselves included). A ballot is final, only the number of ballots cast is
+shown while voting, and voting closes early once all three ballots are in;
+missing ballots count as abstentions at the deadline. After vote 1 every player
+sees the per-player totals. The Decision Maker is the player with the most vote 2
+ballots; ties are broken by vote 1 totals, and a remaining tie by a random pick
+stored with the run. Players see the winner and the per-player totals, never
+individual ballots. A refresh after the run still shows the stored result.
+(AI players do not act yet, so with an AI seat voting always runs to its deadline.)
 
 For a quick demo, shorten `chat_seconds`, `vote_seconds` and the start delay in
 `config.yml`. Check the health endpoint with:
@@ -49,6 +58,18 @@ docker compose up -d --force-recreate backend
 
 Restarting the backend ends any unfinished run (marked `abandoned`, logs kept),
 so start a fresh run afterwards.
+
+## Tests
+
+Three automated tests cover the Decision Maker rules (clear vote 2 winner, vote 2
+tie settled by vote 1, and a tie after vote 1 settled by a controlled random pick).
+Run them in the backend container:
+
+```bash
+docker compose exec -T backend python -m unittest discover -s tests -v
+```
+
+Everything else is checked by hand.
 
 ## Inspecting the log
 

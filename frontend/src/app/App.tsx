@@ -3,7 +3,7 @@ import { useExperiment } from "../experiment/useExperiment";
 import { WaitingRoom } from "../session/WaitingRoom";
 
 export function App() {
-  const { state, claim, leaveWaitingRoom, sendMessage } = useExperiment();
+  const { state, claim, leaveWaitingRoom, sendMessage, sendVote } = useExperiment();
   const { session } = state;
   // The label arrives with the start snapshot; until then keep the generic waiting text.
   const started =
@@ -16,7 +16,7 @@ export function App() {
     <main>
       <h1>Experiment</h1>
       {started ? (
-        <ExperimentView state={{ ...state, session }} onSend={sendMessage} />
+        <ExperimentView state={{ ...state, session }} onSend={sendMessage} onVote={sendVote} />
       ) : (
         <WaitingRoom
           status={state.status}

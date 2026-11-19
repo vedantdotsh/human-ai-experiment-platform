@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS experiment_events (
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
     PRIMARY KEY (session_id, seq)
 );
+
+-- A ballot is final: at most one vote per participant per round, enforced here
+-- as well as in the vote service.
+CREATE UNIQUE INDEX IF NOT EXISTS one_vote_per_participant_round
+    ON experiment_events (session_id, actor_id, (payload->>'round'))
+    WHERE event_type = 'vote';
 """
 
 

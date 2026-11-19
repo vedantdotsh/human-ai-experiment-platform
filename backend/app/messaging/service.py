@@ -3,17 +3,12 @@ from uuid import UUID
 from psycopg_pool import AsyncConnectionPool
 
 from app.event_log.store import append_event
+from app.experiment.errors import Rejected
 from app.experiment.phases import LABELS, phase_at
 from app.realtime.hub import Hub
 from app.session.service import SeatService
 
 MAX_MESSAGE_LENGTH = 500
-
-
-class Rejected(Exception):
-    def __init__(self, reason: str) -> None:
-        super().__init__(reason)
-        self.reason = reason
 
 
 class MessageService:

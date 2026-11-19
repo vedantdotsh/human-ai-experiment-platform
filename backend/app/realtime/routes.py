@@ -5,7 +5,7 @@ import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.experiment.engine import CLOSE_SEAT_GONE
-from app.messaging.service import Rejected
+from app.experiment.errors import Rejected
 from app.realtime.hub import Connection
 
 log = logging.getLogger("realtime")
@@ -47,14 +47,21 @@ async def dispatch(state, info, conn: Connection, raw: str) -> None:
         kind = msg["type"]
     except (ValueError, KeyError, TypeError):
         return reject("unknown", "invalid_message")
-    if kind != "message.send":
+    expected = msg.get("expected_phase_seq")
+    now_ms = int(time.time() * 1000)
+    if kind == "message.send":
+        text = msg.get("text")
+        if not isinstance(text, str) or not isinstance(expected, int) or isinstance(expected, bool):
+            return reject(kind, "invalid_message")
+        action = state.messages.submit(info.session_id, info.participant_id, text, expected, now_ms)
+    elif kind == "vote.submit":
+        target = msg.get("target")
+        if not isinstance(target, str) or not isinstance(expected, int) or isinstance(expected, bool):
+            return reject(kind, "invalid_vote")
+        action = state.votes.submit(info.session_id, info.participant_id, target, expected, now_ms)
+    else:
         return reject(str(kind), "unknown_action")
-    text, expected = msg.get("text"), msg.get("expected_phase_seq")
-    if not isinstance(text, str) or not isinstance(expected, int) or isinstance(expected, bool):
-        return reject(kind, "invalid_message")
     try:
-        await state.messages.submit(
-            info.session_id, info.participant_id, text, expected, int(time.time() * 1000)
-        )
+        await action
     except Rejected as exc:
         reject(kind, exc.reason)

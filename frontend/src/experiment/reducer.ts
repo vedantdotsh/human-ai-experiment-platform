@@ -1,4 +1,4 @@
-import type { ChatMessage, ServerMessage } from "../realtime/socket";
+import type { ChatMessage, Results, ServerMessage, Totals } from "../realtime/socket";
 
 export type Session = {
   phase: string;
@@ -7,6 +7,11 @@ export type Session = {
   deadline: number | null;
   ownLabel: string | null;
   messages: ChatMessage[];
+  /** Ballots cast so far in the active voting round; null outside voting. */
+  ballotsCast: number | null;
+  ownVote: string | null;
+  vote1Totals: Totals | null;
+  results: Results | null;
 };
 
 export type State = {
@@ -39,6 +44,9 @@ const REASONS: Record<string, string> = {
   stale_phase: "That phase just ended.",
   too_late: "Time is up for this phase.",
   invalid_message: "Messages must be 1 to 500 characters.",
+  voting_closed: "Voting is not open right now.",
+  already_voted: "Your ballot is final; you have already voted.",
+  invalid_vote: "That is not a valid vote.",
 };
 
 export function reduce(state: State, action: Action): State {
@@ -73,6 +81,10 @@ function applyServer(state: State, message: ServerMessage): State {
           deadline: message.deadline,
           ownLabel: message.own_label,
           messages: message.messages,
+          ballotsCast: message.ballots_cast,
+          ownVote: message.own_vote,
+          vote1Totals: message.vote1_totals,
+          results: message.results,
         },
       };
     case "phase.changed":
@@ -87,8 +99,29 @@ function applyServer(state: State, message: ServerMessage): State {
           round: message.round,
           phaseSeq: message.phase_seq,
           deadline: message.deadline,
+          // Each voting round starts with no ballots; other phases show none.
+          ballotsCast: message.phase === "voting" ? 0 : null,
+          ownVote: null,
         },
       };
+    case "vote.recorded":
+      return state.session ? { ...state, session: { ...state.session, ownVote: message.target } } : state;
+    case "vote.progress":
+      return state.session
+        ? { ...state, session: { ...state.session, ballotsCast: message.ballots_cast } }
+        : state;
+    case "vote.summary":
+      return state.session ? { ...state, session: { ...state.session, vote1Totals: message.totals } } : state;
+    case "results.ready":
+      return state.session
+        ? {
+            ...state,
+            session: {
+              ...state.session,
+              results: { winner: message.winner, totals: message.totals },
+            },
+          }
+        : state;
     case "message.created": {
       if (!state.session || state.session.messages.some((m) => m.number === message.number)) return state;
       const { type: _type, ...chat } = message;

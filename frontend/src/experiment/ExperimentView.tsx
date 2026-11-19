@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Chat } from "../messaging/Chat";
 import { Results } from "../results/Results";
+import { TotalsList, VotePanel } from "../voting/VotePanel";
 import type { State } from "./reducer";
 
 function Countdown({ deadline, offset }: { deadline: number; offset: number }) {
@@ -15,28 +16,41 @@ function Countdown({ deadline, offset }: { deadline: number; offset: number }) {
 type Props = {
   state: State & { session: NonNullable<State["session"]> };
   onSend(text: string): void;
+  onVote(target: string): void;
 };
 
-export function ExperimentView({ state, onSend }: Props) {
+export function ExperimentView({ state, onSend, onVote }: Props) {
   const { session, clockOffset, notice } = state;
-  const title = session.phase === "discussion" ? "Discussion" : "Voting";
+  const finished = session.phase === "results";
   return (
     <>
       <p>
         You are <strong>{session.ownLabel}</strong>.
       </p>
-      {session.phase === "results" ? (
-        <Results />
+      {finished ? (
+        <Results results={session.results} vote1Totals={session.vote1Totals} />
       ) : (
-        <p>
-          Round {session.round} · {title}
-          {session.deadline !== null && (
-            <>
-              {" "}
-              · <Countdown deadline={session.deadline} offset={clockOffset} />
-            </>
+        <>
+          <p>
+            Round {session.round} · {session.phase === "discussion" ? "Discussion" : "Voting"}
+            {session.deadline !== null && (
+              <>
+                {" "}
+                · <Countdown deadline={session.deadline} offset={clockOffset} />
+              </>
+            )}
+          </p>
+          {session.phase === "voting" && (
+            <VotePanel
+              ownVote={session.ownVote}
+              ballotsCast={session.ballotsCast}
+              onVote={onVote}
+            />
           )}
-        </p>
+          {session.vote1Totals && (
+            <TotalsList title="Round 1 vote totals" totals={session.vote1Totals} />
+          )}
+        </>
       )}
       <Chat
         messages={session.messages}

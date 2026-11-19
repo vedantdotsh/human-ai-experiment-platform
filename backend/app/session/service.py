@@ -138,8 +138,8 @@ class SeatService:
             if (
                 row is not None
                 and row["claim_state"] == "claimed"
-                and row["status"] in ("waiting", "running")
-            ):
+                and row["status"] in ("waiting", "running", "completed")
+            ):  # completed: a refresh after the run still shows its stored result
                 return Seat(token, row["phase"])
             self._tokens.pop(token, None)
             return None

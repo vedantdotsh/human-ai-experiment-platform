@@ -10,9 +10,11 @@ from psycopg_pool import AsyncConnectionPool
 
 from app.event_log.store import append_event
 from app.experiment.phases import LABELS, PHASES, duration_seconds, phase_at
+from app.experiment.winner import decide_winner
 from app.realtime.hub import Connection, Hub
 from app.session.config import Config
 from app.session.service import SeatInfo, SeatService
+from app.voting.service import ballot_count, ballot_totals, labelled, own_ballot
 
 log = logging.getLogger("experiment")
 
@@ -27,6 +29,7 @@ class Runtime:
     start_task: asyncio.Task | None = None
     runner: asyncio.Task | None = None
     lapsed: set[UUID] = field(default_factory=set)  # participants whose last socket closed
+    early_close: asyncio.Event = field(default_factory=asyncio.Event)  # all ballots are in
 
 
 def _ms(moment: datetime | None) -> int | None:
@@ -165,31 +168,60 @@ class Engine:
 
     # --- the clock ----------------------------------------------------------------
 
+    def early_close(self, session_id: UUID) -> None:
+        """Called when every ballot of the active round is in: end voting now."""
+        self._runtime(session_id).early_close.set()
+
     async def _run(self, session_id: UUID, deadline: float | None) -> None:
         """Advance through the remaining phases on the server's clock, whether or
-        not any browser is connected."""
+        not any browser is connected. A phase ends at its deadline, or sooner when
+        voting is closed early."""
+        runtime = self._runtime(session_id)
         try:
             for phase_seq in range(2, len(PHASES) + 1):
-                await asyncio.sleep(max(0.0, (deadline or 0) - time.time()))
+                try:
+                    await asyncio.wait_for(
+                        runtime.early_close.wait(), max(0.0, (deadline or 0) - time.time())
+                    )
+                except TimeoutError:
+                    pass
                 async with self._seats.session_lock(session_id):
                     deadline = await self._enter_phase(session_id, phase_seq)
+                    runtime.early_close.clear()
         except Exception:
             log.exception("run %s stopped advancing", session_id)
 
     async def _enter_phase(self, session_id: UUID, phase_seq: int) -> float | None:
-        """Commit a phase change and enqueue it. Call with the session lock held."""
+        """Commit a phase change and enqueue it. Call with the session lock held.
+        Leaving round 1 voting publishes its totals; entering results decides the
+        winner in the same transaction that completes the run."""
         phase, round_number = phase_at(phase_seq)
         now = time.time()
         seconds = duration_seconds(phase, self._config)
         deadline = None if seconds is None else now + seconds
         deadline_at = None if deadline is None else datetime.fromtimestamp(deadline, UTC)
         finished = phase == "results"
+        payload: dict = {"phase": phase, "round": round_number, "deadline": _ms(deadline_at)}
+        vote1_totals = results = None
+        winner_slot = None
         async with self._pool.connection() as c, c.transaction():
+            if phase_seq == 3:
+                vote1_totals = await ballot_totals(c, session_id, 1)
+            if finished:
+                vote1 = await ballot_totals(c, session_id, 1)
+                vote2 = await ballot_totals(c, session_id, 2)
+                winner_slot, decided_by = decide_winner(vote1, vote2, random.SystemRandom().choice)
+                results = {"winner": LABELS[winner_slot], "totals": labelled(vote2)}
+                payload |= {
+                    "winner_slot": winner_slot,
+                    "decided_by": decided_by,
+                    "vote_totals": {"round1": vote1, "round2": vote2},
+                }
             await c.execute(
                 """
                 UPDATE sessions
                    SET phase = %s, phase_seq = %s, phase_started_at = %s,
-                       phase_deadline = %s, status = %s, completed_at = %s
+                       phase_deadline = %s, status = %s, completed_at = %s, winner_slot = %s
                  WHERE id = %s
                 """,
                 (
@@ -199,15 +231,11 @@ class Engine:
                     deadline_at,
                     "completed" if finished else "running",
                     datetime.fromtimestamp(now, UTC) if finished else None,
+                    winner_slot,
                     session_id,
                 ),
             )
-            await append_event(
-                c,
-                session_id,
-                "phase_change",
-                payload={"phase": phase, "round": round_number, "deadline": _ms(deadline_at)},
-            )
+            await append_event(c, session_id, "phase_change", payload=payload)
         self._hub.broadcast(
             session_id,
             {
@@ -219,6 +247,13 @@ class Engine:
                 "deadline": _ms(deadline_at),
             },
         )
+        if vote1_totals is not None:
+            self._hub.broadcast(
+                session_id,
+                {"type": "vote.summary", "round": 1, "totals": labelled(vote1_totals)},
+            )
+        if results is not None:
+            self._hub.broadcast(session_id, {"type": "results.ready", **results})
         if phase_seq == 1:
             # Labels are revealed only now, so each socket gets a fresh snapshot.
             for participant_id in self._hub.connected(session_id):
@@ -233,7 +268,8 @@ class Engine:
         async with self._pool.connection() as c:
             cur = await c.execute(
                 """
-                SELECT s.phase, s.phase_seq, s.phase_deadline, p.slot, p.claim_state
+                SELECT s.phase, s.phase_seq, s.phase_deadline, s.winner_slot,
+                       p.slot, p.claim_state
                   FROM sessions s JOIN participants p ON p.session_id = s.id
                  WHERE s.id = %s AND p.id = %s
                 """,
@@ -251,12 +287,26 @@ class Engine:
                 (session_id,),
             )
             messages = await cur.fetchall()
-        started = row["phase_seq"] >= 1
+            phase_seq = row["phase_seq"]
+            ballots_cast = own_vote = vote1_totals = results = None
+            if row["phase"] == "voting":
+                round_number = phase_at(phase_seq)[1]
+                ballots_cast = await ballot_count(c, session_id, round_number)
+                own = await own_ballot(c, session_id, participant_id, round_number)
+                own_vote = LABELS[own] if own else None
+            if phase_seq >= 3:
+                vote1_totals = labelled(await ballot_totals(c, session_id, 1))
+            if row["phase"] == "results":
+                results = {
+                    "winner": LABELS[row["winner_slot"]],
+                    "totals": labelled(await ballot_totals(c, session_id, 2)),
+                }
+        started = phase_seq >= 1
         return {
             "type": "session.snapshot",
             "phase": row["phase"],
-            "round": phase_at(row["phase_seq"])[1] if started else None,
-            "phase_seq": row["phase_seq"],
+            "round": phase_at(phase_seq)[1] if started else None,
+            "phase_seq": phase_seq,
             "server_time": int(time.time() * 1000),
             "deadline": _ms(row["phase_deadline"]),
             "own_label": LABELS[row["slot"]] if started else None,
@@ -270,6 +320,10 @@ class Engine:
                 }
                 for number, m in enumerate(messages, start=1)
             ],
+            "ballots_cast": ballots_cast,
+            "own_vote": own_vote,
+            "vote1_totals": vote1_totals,
+            "results": results,
         }
 
     async def shutdown(self) -> None:

@@ -1,6 +1,7 @@
 from app.session.config import Config
 
 LABELS = {1: "Player A", 2: "Player B", 3: "Player C"}
+SLOT_BY_LABEL = {label: slot for slot, label in LABELS.items()}
 
 # phase_seq 0 is the waiting room; the run then steps through these in order,
 # so phase_seq N is PHASES[N - 1].
