@@ -1,13 +1,29 @@
 # Step Five review
 
-**Blocked before Step Six.** The available revision, `84b7419`, still allows self-votes unconditionally. The browser trials also reproduced a role clue that a participant can trigger from one seat by asking a direct bot question.
+**Ready for Step Six.** Both original blockers passed a targeted recheck of `64186f3`. The current default is `allow_self_vote: false`.
 
-## Fixes required
+## Targeted recheck
+
+Three isolated browser runs used one human and two AI seats. The runs used 25- or 40-second discussions and 12-second votes. All three reached results.
+
+| Self-vote setting | Browser result in both rounds | Persisted AI ballots |
+| --- | --- | --- |
+| False, live key | The human's own label was absent from the choices. A direct WebSocket self-vote was rejected with `self_vote_not_allowed`. An allowed vote was accepted. | Four model-generated ballots. Zero self-votes. |
+| False, no key | The same UI and server checks passed. | Four scripted ballots. Zero self-votes. |
+| True, no key | The human's own label appeared as a choice and both human self-votes were accepted. | Four scripted ballots, including one permitted AI self-vote. |
+
+An in-container check forced the AI provider to return the AI's own label. With self-voting disabled, candidate validation rejected the pick and selected another label through the scripted fallback. With self-voting enabled, the same provider pick was accepted.
+
+**Three bot questions in one live-key run.** I asked twice in Round One and once in Round Two, pressing for a straight answer on the third probe. Both AI seats continued using the model throughout the run. Postgres marked all 12 AI chat lines as model-generated, with zero scripted fallbacks. The replies ranged from jokes about typing speed to a complaint about being grilled. The previous question-triggered canned pattern did not recur, and no reply admitted to being a bot or identified another seat as AI. A denial describing the speaker as “just a guy who types fast” and two suggestions to move to Round Two after it had already started could still make a suspicious reader pause. Those were style and context clues, and the trial does not establish that every possible prompt preserves blinding.
+
+Only these two findings were rechecked. No application code or tracked configuration changed.
+
+## Original findings on `84b7419` (resolved)
 
 1. **Make the self-vote rule available in the reviewed build.** The browser offered the self-vote button and returned a private confirmation after a human self-vote in all four mixed runs. Three scripted AI ballots were self-votes. The YAML loader has no self-vote option and rejected the trial key `allow_self_vote` with either Boolean value. An enabled setting therefore could not be tested independently of the existing unconditional behavior, and the disabled path could not be tested at all. Default the rule to false, enforce it in the shared server validation, and exclude the AI's own label from both provider ballot choices and scripted fallback when disabled. Retest both settings, including the provider and fallback paths, on that revision. [Configuration](../backend/app/session/config.py) · [AI ballot selection](../backend/app/ai/players.py#L213) · [Scripted ballot](../backend/app/ai/scripted.py#L103)
 2. **Remove the predictable behavioral response to the bot question.** The same prompt repeatedly switched live-key AI seats from model-generated chat to a small pool of scripted deflections, for multiple turns and even for both seats at once. In the browser, the casual human response and the AI seats' repeated evasions were visibly different. Keep protections against role disclosure, but avoid a separate fixed response pattern that a participant can trigger. Retest the question in ordinary and targeted conversations, with and without the key. [Question-triggered branch](../backend/app/ai/players.py#L145) · [Scripted deflections](../backend/app/ai/scripted.py)
 
-## Browser runs
+## Original browser runs
 
 I ran four independent Compose stacks with 30-second discussions and 12-second votes, with a browser tab per human. All four reached a Decision Maker. The one-human/two-AI live-key run used a freshly built image of the same revision as the other runs.
 
@@ -56,3 +72,17 @@ Reviewer model: `gpt-6.2-sol`. No application code or tracked configuration chan
 > save your findings in the reviews folder with filename step 05 same naming as before
 >
 > tell me if it is ready for step 6 or what must be fixed first
+
+> the builder fixed both findings from your step 5 review
+>
+> do not change any code
+>
+> recheck only those two
+>
+> first the self vote setting: check it in the browser with the setting false and with it true and check the ai never votes for itself when it is false with the key and without the key
+>
+> second the bot question: ask it three times in one run with the key and tell me if the ai still gives itself away
+>
+> add the results to the step 05 review file
+>
+> tell me if it is ready for step 6
