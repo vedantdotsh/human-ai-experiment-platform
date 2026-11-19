@@ -1,13 +1,45 @@
 import os
+from contextlib import asynccontextmanager
 
 import psycopg
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
+
+from app.db import abandon_unfinished_runs, init_schema
+from app.event_log.routes import router as event_log_router
+from app.session.config import load_config
+from app.session.routes import router as session_router
+from app.session.service import SeatService
 
 DATABASE_URL = os.environ["DATABASE_URL"]
+CONFIG_PATH = os.environ.get("CONFIG_PATH", "/srv/config.yml")
 DB_TIMEOUT_SECONDS = 2
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    config = load_config(CONFIG_PATH)
+    pool = AsyncConnectionPool(
+        DATABASE_URL,
+        min_size=1,
+        max_size=8,
+        open=False,
+        kwargs={"autocommit": True, "row_factory": dict_row},
+    )
+    await pool.open(wait=True, timeout=10)
+    await init_schema(pool)
+    await abandon_unfinished_runs(pool)
+    app.state.pool = pool
+    app.state.seats = SeatService(pool, config)
+    yield
+    await pool.close()
+
+
+app = FastAPI(lifespan=lifespan)
+app.include_router(session_router)
+app.include_router(event_log_router)
 
 
 def check_database() -> None:

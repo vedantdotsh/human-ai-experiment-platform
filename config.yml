@@ -1,0 +1,8 @@
+# Experiment condition and timings. Read once at backend startup.
+# Allowed human/AI mixes: 2 humans + 1 AI (default), 3 humans + 0 AI, 1 human + 2 AI.
+# After editing, recreate the backend so it re-reads the file:
+#   docker compose up -d --force-recreate backend
+humans: 2
+ai: 1
+chat_seconds: 60
+vote_seconds: 20

@@ -17,6 +17,9 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql://experiment:experiment@db:5432/experiment
+      CONFIG_PATH: /srv/config.yml
+    volumes:
+      - ./config.yml:/srv/config.yml:ro
     depends_on:
       db:
         condition: service_healthy
