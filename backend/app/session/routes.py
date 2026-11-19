@@ -17,7 +17,7 @@ class LeaveRequest(BaseModel):
 @router.post("/join")
 async def join(body: JoinRequest, request: Request) -> dict:
     seat = await request.app.state.seats.join(body.seat_token)
-    return {"seat_token": seat.seat_token, "label": seat.label, "phase": seat.phase}
+    return {"seat_token": seat.seat_token, "phase": seat.phase}
 
 
 @router.post("/leave", status_code=204)

@@ -1,4 +1,4 @@
-export type Seat = { seat_token: string; label: string; phase: string };
+export type Seat = { seat_token: string; phase: string };
 
 const TOKEN_KEY = "seatToken";
 

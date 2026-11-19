@@ -10,13 +10,12 @@ from psycopg_pool import AsyncConnectionPool
 from app.event_log.store import append_event
 from app.session.config import Config
 
-LABELS = {1: "Player A", 2: "Player B", 3: "Player C"}
-
 
 @dataclass(frozen=True)
 class Seat:
+    # Deliberately no label: while waiting, a seat's label would reveal which
+    # other seats are AI. The player learns their label when play starts.
     seat_token: str
-    label: str
     phase: str
 
 
@@ -94,7 +93,7 @@ class SeatService:
             async with self._pool.connection() as conn:
                 cur = await conn.execute(
                     """
-                    SELECT p.slot, p.claim_state, s.status, s.phase
+                    SELECT p.claim_state, s.status, s.phase
                       FROM participants p JOIN sessions s ON s.id = p.session_id
                      WHERE p.id = %s
                     """,
@@ -106,7 +105,7 @@ class SeatService:
                 and row["claim_state"] == "claimed"
                 and row["status"] in ("waiting", "running")
             ):
-                return Seat(token, LABELS[row["slot"]], row["phase"])
+                return Seat(token, row["phase"])
             self._tokens.pop(token, None)
             return None
 
@@ -157,7 +156,7 @@ class SeatService:
                     """
                     SELECT id, slot FROM participants
                      WHERE session_id = %s AND role = 'human' AND claim_state = 'open'
-                     ORDER BY slot LIMIT 1
+                     ORDER BY random() LIMIT 1
                     """,
                     (session_id,),
                 )
@@ -177,4 +176,4 @@ class SeatService:
                 )
             token = secrets.token_urlsafe(32)
             self._tokens[token] = (session_id, row["id"])
-            return Seat(token, LABELS[row["slot"]], "waiting")
+            return Seat(token, "waiting")
