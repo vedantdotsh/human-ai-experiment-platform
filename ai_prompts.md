@@ -399,9 +399,141 @@ tell me if it is ready to submit or what must be fixed first
 | --- | --- |
 | Output | `ui-prototypes/` (options A to J; the folder is git-ignored) |
 | Models | Claude Opus 5.5, `gpt-6.2-sol` and Gemini 4 Neon |
+| Tool | Claude Code (Claude agent provider) running Claude Opus 5.5 (`claude-opus-5-5`) inside T3 Code, which handed parts of the work to the other two models |
 | Chosen design | Option H, built by Gemini 4 Neon alone |
+| Source | T3 Code thread "Three Research App UI Prototypes" (`t3-thread://v2/ba152e1d-df3b-4821-8607-ea7ffd2fdb64/f36c6b25-bf73-46a2-9de0-ed7be7ccdd27`) |
 
-The prompts used to make the prototypes were not provided for this record.
+The owner's two messages in that conversation, word for word. The first produced
+options A to E, the second options F to J.
+
+### UI prototype prompt 1: options A to E
+
+```text
+i need three ui prototypes so i can choose a look for my app
+
+do not change any existing file and do not commit anything
+
+make a new folder called ui-prototypes and write three files in it: option a, option b and option c
+
+each file is one plain html page with css inside it and no frameworks and no outside files so i can open it by double clicking
+
+the app is a research experiment with three participants called player a, player b and player c
+
+they chat in two rounds and after each round they vote for who should be the decision maker
+
+some players may be ai and nobody is allowed to tell who
+
+every prototype must show these screens:
+
+1 the waiting room with only the text waiting for other participants and a leave button, no count and no list of players
+
+2 the discussion with the round number, a countdown, you are player b, the chat with a few short messages and a box to type in, and the round 1 messages still visible in round 2
+
+3 voting before i voted with the question who should be the decision maker, one button for player a and one for player c because i cannot vote for myself, and ballots cast 1 of 3
+
+4 voting after i voted with your vote player a final and the buttons disabled
+
+5 the round 1 totals per player shown at the start of round 2, only totals and never who voted for whom
+
+6 the results with the chosen decision maker, the totals for both rounds and one line saying how it was decided
+
+7 two small states: this run is no longer available, and you left the waiting room with a join again button
+
+rules for all three:
+
+nothing may show or hint who is an ai or how many there are, so no online or typing indicators and no different avatars
+
+all three players look the same in style and the vote buttons are the same size and colour in a b c order so the design does not push anyone toward a candidate
+
+the countdown is easy to see and changes a little in the last 10 seconds
+
+text is easy to read and buttons are big enough to click
+
+it must be possible to build with plain css because the real app is react with no ui library
+
+make the three really different:
+
+option a is plain and quiet like lab software with one centered column and almost no colour
+
+option b looks like a chat app with message bubbles and my messages on the right
+
+option c has two panels with the phase steps and a big countdown on the left and the chat and voting on the right
+
+at the top of each file write two lines saying which option it is and its main trade off
+
+when you are done tell me the three file paths and whether you checked how they look 
+Give me five prototypes:
+• One with Opus 5.5
+• One with GPT 6.2
+• Maybe use Gemini 4 Neon for the wordings on the website (because it's better)
+• Combinations of some different models
+```
+
+### UI prototype prompt 2: options F to J
+
+```text
+i do not like any of the five prototypes they are too plain and static
+
+make five new ones called option f, g, h, i and j in the same folder and do not touch any other file and do not commit
+
+use different models: one by opus 5.5 alone, one by gpt 6.2 sol alone, one by gemini 4 neon alone, one where opus builds and gpt reviews and fixes it, and one where gpt builds and opus reviews and fixes it
+
+gemini 4 neon writes the wording for all five and uses as few words as possible, short labels and no long sentences
+
+at least two are light theme and at least two are dark theme and all five must look clearly different from each other
+
+i want them smooth and interactive and beautiful like a modern product not like lab software
+
+first look at how these products do it and tell me in two lines per option what you borrowed: linear and vercel for layout and spacing, imessage and slack for chat, slido and mentimeter and kahoot for live voting and results, jackbox for the waiting lobby
+
+colour palette for light themes: background warm off white f7f5f0, cards white, text near black 16181d, muted text 6b7280, one accent colour cobalt blue 2f5bea for buttons and the countdown, amber d97706 only for the last 10 seconds
+
+for dark themes: background 0f1115, cards 181b22, text e8eaed, muted 9aa3b2, the same cobalt accent a bit brighter 5b7cff, amber f59e0b for the last 10 seconds
+
+the three players get three colours of equal strength, blue 3b6fe0 for a, teal 0f9d8a for b and violet 8b5cf6 for c, used the same way for everyone and always with the name next to it
+
+use rounded corners around 14 pixels, soft shadows, generous spacing and one clean font stack starting with inter and falling back to the system font
+
+make each one a real clickable prototype with a little plain javascript: i can go from waiting to round 1 to vote 1 to round 2 to vote 2 to results, the countdown really counts down but fast, i can type a message and it appears, and i can click a vote and the screen changes
+
+animations i want, all short between 150 and 300 milliseconds:
+
+the waiting room has a soft breathing animation so it feels alive
+
+a new chat message fades in and rises a few pixels
+
+the countdown is a ring that empties smoothly and pulses gently in the last 10 seconds
+
+changing phase slides or crossfades to the next screen and a step bar shows where we are
+
+vote buttons lift a little on hover and press down when clicked and the chosen one shows a check mark that draws itself
+
+ballots cast is shown as three dots that fill up
+
+the round totals are bars that grow from zero while the numbers count up
+
+the results reveal the decision maker with a soft scale and glow
+
+turn all motion off when the device asks for reduced motion
+
+rules that still apply and must not be broken:
+
+the waiting room shows only waiting for other participants and a leave button, no count and no list of players
+
+nothing shows or hints who is an ai, so no typing indicator, no online dots and no avatars that differ
+
+every message animates the same way no matter who sent it
+
+the vote buttons for player a and player c are the same size and colour and in that order, and i am player b and cannot vote for myself
+
+totals only and never who voted for whom
+
+all seven screens from before must be there
+
+everything must be possible in react with plain css and no ui library, and each file must open by double clicking with no outside files
+
+when you are done screenshot all five at desktop and phone width and check them against these rules and give me the five file paths with which models made each one
+```
 
 ## UI builder
 
