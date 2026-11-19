@@ -1,6 +1,6 @@
 # Step Five review
 
-**Ready for Step Six.** Both original blockers passed a targeted recheck of `64186f3`. The current default is `allow_self_vote: false`.
+**Ready for Step Six.** Both original blockers passed a targeted recheck of `ac07f4a`. The current default is `allow_self_vote: false`.
 
 ## Targeted recheck
 
@@ -18,7 +18,7 @@ An in-container check forced the AI provider to return the AI's own label. With 
 
 Only these two findings were rechecked. No application code or tracked configuration changed.
 
-## Original findings on `84b7419` (resolved)
+## Original findings on `4284441` (resolved)
 
 1. **Make the self-vote rule available in the reviewed build.** The browser offered the self-vote button and returned a private confirmation after a human self-vote in all four mixed runs. Three scripted AI ballots were self-votes. The YAML loader has no self-vote option and rejected the trial key `allow_self_vote` with either Boolean value. An enabled setting therefore could not be tested independently of the existing unconditional behavior, and the disabled path could not be tested at all. Default the rule to false, enforce it in the shared server validation, and exclude the AI's own label from both provider ballot choices and scripted fallback when disabled. Retest both settings, including the provider and fallback paths, on that revision. [Configuration](../backend/app/session/config.py) · [AI ballot selection](../backend/app/ai/players.py#L213) · [Scripted ballot](../backend/app/ai/scripted.py#L103)
 2. **Remove the predictable behavioral response to the bot question.** The same prompt repeatedly switched live-key AI seats from model-generated chat to a small pool of scripted deflections, for multiple turns and even for both seats at once. In the browser, the casual human response and the AI seats' repeated evasions were visibly different. Keep protections against role disclosure, but avoid a separate fixed response pattern that a participant can trigger. Retest the question in ordinary and targeted conversations, with and without the key. [Question-triggered branch](../backend/app/ai/players.py#L145) · [Scripted deflections](../backend/app/ai/scripted.py)

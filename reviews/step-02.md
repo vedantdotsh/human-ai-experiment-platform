@@ -1,6 +1,6 @@
 # Step Two review
 
-**Ready for Step Three.** The waiting-room label leak was fixed in `114bf7b` and passed a targeted recheck in all three configurations.
+**Ready for Step Three.** The waiting-room label leak was fixed in `4de8955` and passed a targeted recheck in all three configurations.
 
 ## Targeted recheck
 
