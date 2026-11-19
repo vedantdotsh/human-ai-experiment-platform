@@ -51,6 +51,7 @@ class Engine:
         self._seats = seats
         self._hub = hub
         self._rt: dict[UUID, Runtime] = {}
+        self.ai = None  # AiPlayers, set after construction; started on each phase change
         seats.listener = self
 
     def _runtime(self, session_id: UUID) -> Runtime:
@@ -260,6 +261,8 @@ class Engine:
                 snapshot = await self._snapshot(session_id, participant_id)
                 if snapshot is not None:
                     self._hub.send(session_id, participant_id, snapshot)
+        if self.ai is not None:
+            self.ai.phase_started(session_id, phase_seq, deadline)
         return deadline
 
     # --- snapshot ---------------------------------------------------------------
@@ -327,6 +330,8 @@ class Engine:
         }
 
     async def shutdown(self) -> None:
+        if self.ai is not None:
+            await self.ai.shutdown()
         for runtime in self._rt.values():
             for task in [runtime.start_task, runtime.runner, *runtime.grace.values()]:
                 if task is not None:

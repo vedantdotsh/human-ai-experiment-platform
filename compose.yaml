@@ -18,6 +18,8 @@ services:
     environment:
       DATABASE_URL: postgresql://experiment:experiment@db:5432/experiment
       CONFIG_PATH: /srv/config.yml
+      # Read from the git-ignored .env next to this file; empty means scripted AI only.
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
     volumes:
       - ./config.yml:/srv/config.yml:ro
     depends_on:

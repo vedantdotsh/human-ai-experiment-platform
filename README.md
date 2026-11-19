@@ -32,8 +32,11 @@ sees the per-player totals. The Decision Maker is the player with the most vote 
 ballots; ties are broken by vote 1 totals, and a remaining tie by a random pick
 stored with the run. Players see the winner and the per-player totals, never
 individual ballots. A refresh after the run still shows the stored result.
-(AI players do not act yet, so with an AI seat voting always runs to its deadline.)
 
+AI seats chat two or three times per discussion and vote once per round, at random
+times inside the phase, with a typing-like delay before each message; voting closes
+early once every seat, AI included, has voted. They use the same validation and
+persistence as human actions.
 For a quick demo, shorten `chat_seconds`, `vote_seconds` and the start delay in
 `config.yml`. Check the health endpoint with:
 
@@ -45,6 +48,25 @@ curl -fsS http://localhost:5173/api/health
 Only the frontend is published (on `127.0.0.1:5173`); it proxies `/api` to the
 backend, which is reachable only inside the Compose network. Stop with
 `docker compose down` (add `-v` to also delete the Postgres volume).
+
+## AI players and the API key
+
+AI seats call Mistral from the backend only. Put the key in a `.env` file next to
+`compose.yaml` (copy `.env.example`; `.env` is git-ignored and never committed):
+
+```bash
+cp .env.example .env   # then set MISTRAL_API_KEY=...
+docker compose up -d --force-recreate backend
+```
+
+The model and call timeout are `ai_model` and `ai_call_timeout_seconds` in
+`config.yml`. Without a key, or when a call fails, times out, or returns unusable
+text, the AI falls back to varied scripted lines and a ballot weighted toward who
+has spoken; each fallback and its reason is recorded in the event log. Model output
+is checked before posting: it must be short, must not mention AI, bots, models or
+humans, must not claim to be real, and must not repeat an earlier message. If anyone
+recently asks about AI or bots, the AI posts a scripted deflection instead of calling
+the model. Prompts and the model are listed in `ai_prompts.md`.
 
 ## Configuration
 

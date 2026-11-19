@@ -8,6 +8,8 @@ from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
 from app.db import abandon_unfinished_runs, init_schema
+from app.ai.players import AiPlayers
+from app.ai.provider import provider_from_env
 from app.event_log.routes import router as event_log_router
 from app.experiment.engine import Engine
 from app.messaging.service import MessageService
@@ -44,6 +46,9 @@ async def lifespan(app: FastAPI):
     app.state.engine = engine
     app.state.messages = MessageService(pool, seats, hub)
     app.state.votes = VoteService(pool, seats, hub, engine.early_close)
+    engine.ai = AiPlayers(
+        pool, config, app.state.messages, app.state.votes, provider_from_env(config.ai_model)
+    )
     yield
     await app.state.engine.shutdown()
     await pool.close()

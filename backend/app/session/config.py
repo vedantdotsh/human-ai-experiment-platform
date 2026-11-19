@@ -12,6 +12,8 @@ KEYS = {
     "start_delay_min_seconds",
     "start_delay_max_seconds",
     "waiting_grace_seconds",
+    "ai_model",
+    "ai_call_timeout_seconds",
 }
 
 
@@ -28,6 +30,8 @@ class Config:
     start_delay_min_seconds: int
     start_delay_max_seconds: int
     waiting_grace_seconds: int
+    ai_model: str
+    ai_call_timeout_seconds: int
 
     def snapshot(self) -> dict:
         return asdict(self)
@@ -38,6 +42,13 @@ def _int(raw: dict, key: str, minimum: int) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
         raise ConfigError(f"config: '{key}' must be an integer >= {minimum}")
     return value
+
+
+def _str(raw: dict, key: str) -> str:
+    value = raw.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ConfigError(f"config: '{key}' must be a non-empty string")
+    return value.strip()
 
 
 def load_config(path: str) -> Config:
@@ -58,6 +69,8 @@ def load_config(path: str) -> Config:
         start_delay_min_seconds=_int(raw, "start_delay_min_seconds", 0),
         start_delay_max_seconds=_int(raw, "start_delay_max_seconds", 0),
         waiting_grace_seconds=_int(raw, "waiting_grace_seconds", 1),
+        ai_model=_str(raw, "ai_model"),
+        ai_call_timeout_seconds=_int(raw, "ai_call_timeout_seconds", 1),
     )
     if config.start_delay_max_seconds < config.start_delay_min_seconds:
         raise ConfigError("config: start_delay_max_seconds must be >= start_delay_min_seconds")

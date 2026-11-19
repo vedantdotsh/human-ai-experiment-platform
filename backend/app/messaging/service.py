@@ -27,6 +27,7 @@ class MessageService:
         text: str,
         expected_phase_seq: int,
         now_ms: int,
+        meta: dict | None = None,
     ) -> None:
         text = text.strip()
         if not text or len(text) > MAX_MESSAGE_LENGTH:
@@ -57,7 +58,7 @@ class MessageService:
                     session_id,
                     "message",
                     participant_id,
-                    {"round": round_number, "text": text},
+                    {"round": round_number, "text": text, **(meta or {})},
                 )
                 # Counts chat only, so it reveals nothing about joins or disconnects.
                 cur = await conn.execute(

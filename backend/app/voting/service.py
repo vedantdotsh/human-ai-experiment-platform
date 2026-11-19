@@ -85,6 +85,7 @@ class VoteService:
         target: str,
         expected_phase_seq: int,
         now_ms: int,
+        meta: dict | None = None,
     ) -> None:
         target_slot = SLOT_BY_LABEL.get(target)
         if target_slot is None:
@@ -117,7 +118,7 @@ class VoteService:
                         session_id,
                         "vote",
                         participant_id,
-                        {"round": round_number, "target_slot": target_slot},
+                        {"round": round_number, "target_slot": target_slot, **(meta or {})},
                     )
                 except UniqueViolation:  # backstop for the one-ballot-per-round index
                     raise Rejected("already_voted")
