@@ -42,6 +42,7 @@ export function ExperimentView({ state, onSend, onVote }: Props) {
           </p>
           {session.phase === "voting" && (
             <VotePanel
+              options={session.voteOptions}
               ownVote={session.ownVote}
               ballotsCast={session.ballotsCast}
               onVote={onVote}

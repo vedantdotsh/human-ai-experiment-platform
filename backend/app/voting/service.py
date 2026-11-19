@@ -72,11 +72,13 @@ class VoteService:
         seats: SeatService,
         hub: Hub,
         on_all_voted: Callable[[UUID], None],
+        allow_self_vote: bool,
     ) -> None:
         self._pool = pool
         self._seats = seats
         self._hub = hub
         self._on_all_voted = on_all_voted
+        self._allow_self_vote = allow_self_vote
 
     async def submit(
         self,
@@ -94,7 +96,7 @@ class VoteService:
             async with self._pool.connection() as conn, conn.transaction():
                 cur = await conn.execute(
                     """
-                    SELECT s.status, s.phase, s.phase_seq, s.phase_deadline, p.claim_state
+                    SELECT s.status, s.phase, s.phase_seq, s.phase_deadline, p.claim_state, p.slot
                       FROM sessions s JOIN participants p ON p.session_id = s.id
                      WHERE s.id = %s AND p.id = %s
                     """,
@@ -109,6 +111,8 @@ class VoteService:
                     raise Rejected("stale_phase")
                 if now_ms >= row["phase_deadline"].timestamp() * 1000:
                     raise Rejected("too_late")
+                if not self._allow_self_vote and target_slot == row["slot"]:
+                    raise Rejected("self_vote_not_allowed")
                 _, round_number = phase_at(row["phase_seq"])
                 if await own_ballot(conn, session_id, participant_id, round_number) is not None:
                     raise Rejected("already_voted")

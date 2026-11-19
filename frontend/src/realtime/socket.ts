@@ -8,6 +8,8 @@ export type ServerMessage =
       deadline: number | null;
       own_label: string | null;
       messages: ChatMessage[];
+      /** The players this viewer may vote for; null until the run starts. */
+      vote_options: string[] | null;
       ballots_cast: number | null;
       own_vote: string | null;
       vote1_totals: Totals | null;

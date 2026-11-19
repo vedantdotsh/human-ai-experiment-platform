@@ -12,6 +12,7 @@ KEYS = {
     "start_delay_min_seconds",
     "start_delay_max_seconds",
     "waiting_grace_seconds",
+    "allow_self_vote",
     "ai_model",
     "ai_call_timeout_seconds",
 }
@@ -30,6 +31,7 @@ class Config:
     start_delay_min_seconds: int
     start_delay_max_seconds: int
     waiting_grace_seconds: int
+    allow_self_vote: bool
     ai_model: str
     ai_call_timeout_seconds: int
 
@@ -41,6 +43,13 @@ def _int(raw: dict, key: str, minimum: int) -> int:
     value = raw.get(key)
     if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
         raise ConfigError(f"config: '{key}' must be an integer >= {minimum}")
+    return value
+
+
+def _bool(raw: dict, key: str) -> bool:
+    value = raw.get(key)
+    if not isinstance(value, bool):
+        raise ConfigError(f"config: '{key}' must be true or false")
     return value
 
 
@@ -69,6 +78,7 @@ def load_config(path: str) -> Config:
         start_delay_min_seconds=_int(raw, "start_delay_min_seconds", 0),
         start_delay_max_seconds=_int(raw, "start_delay_max_seconds", 0),
         waiting_grace_seconds=_int(raw, "waiting_grace_seconds", 1),
+        allow_self_vote=_bool(raw, "allow_self_vote"),
         ai_model=_str(raw, "ai_model"),
         ai_call_timeout_seconds=_int(raw, "ai_call_timeout_seconds", 1),
     )

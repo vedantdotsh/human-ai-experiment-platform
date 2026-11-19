@@ -11,6 +11,9 @@ start_delay_min_seconds: 3
 start_delay_max_seconds: 8
 # How long a waiting-room seat survives a closed socket (lets a refresh reconnect).
 waiting_grace_seconds: 5
+# Whether a player may vote for themselves. false (default) forces players to
+# persuade each other; true lets everyone pick themselves.
+allow_self_vote: false
 # AI players: model used when MISTRAL_API_KEY is set, and how long one call may take
 # before the scripted fallback is used. Never sent to browsers.
 ai_model: mistral-small-latest

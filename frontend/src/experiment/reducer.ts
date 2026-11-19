@@ -7,6 +7,7 @@ export type Session = {
   deadline: number | null;
   ownLabel: string | null;
   messages: ChatMessage[];
+  voteOptions: string[];
   /** Ballots cast so far in the active voting round; null outside voting. */
   ballotsCast: number | null;
   ownVote: string | null;
@@ -47,6 +48,7 @@ const REASONS: Record<string, string> = {
   voting_closed: "Voting is not open right now.",
   already_voted: "Your ballot is final; you have already voted.",
   invalid_vote: "That is not a valid vote.",
+  self_vote_not_allowed: "You cannot vote for yourself.",
 };
 
 export function reduce(state: State, action: Action): State {
@@ -81,6 +83,7 @@ function applyServer(state: State, message: ServerMessage): State {
           deadline: message.deadline,
           ownLabel: message.own_label,
           messages: message.messages,
+          voteOptions: message.vote_options ?? [],
           ballotsCast: message.ballots_cast,
           ownVote: message.own_vote,
           vote1Totals: message.vote1_totals,

@@ -45,7 +45,9 @@ async def lifespan(app: FastAPI):
     engine = Engine(pool, config, seats, hub)
     app.state.engine = engine
     app.state.messages = MessageService(pool, seats, hub)
-    app.state.votes = VoteService(pool, seats, hub, engine.early_close)
+    app.state.votes = VoteService(
+        pool, seats, hub, engine.early_close, config.allow_self_vote
+    )
     engine.ai = AiPlayers(
         pool, config, app.state.messages, app.state.votes, provider_from_env(config.ai_model)
     )

@@ -24,8 +24,10 @@ discussion, round 2 voting, results. The server owns the clock, so it advances
 even with every tab closed; a player who disconnects mid-run keeps their seat and
 the run continues. Chat is open only during discussion.
 
-During each voting phase a player casts one ballot for any of the three players
-(themselves included). A ballot is final, only the number of ballots cast is
+During each voting phase a player casts one ballot for one of the other two
+players; with `allow_self_vote: true` in `config.yml` they may also vote for
+themselves (the server rejects a self vote otherwise, and the page only offers
+the allowed choices). A ballot is final, only the number of ballots cast is
 shown while voting, and voting closes early once all three ballots are in;
 missing ballots count as abstentions at the deadline. After vote 1 every player
 sees the per-player totals. The Decision Maker is the player with the most vote 2
@@ -63,10 +65,11 @@ The model and call timeout are `ai_model` and `ai_call_timeout_seconds` in
 `config.yml`. Without a key, or when a call fails, times out, or returns unusable
 text, the AI falls back to varied scripted lines and a ballot weighted toward who
 has spoken; each fallback and its reason is recorded in the event log. Model output
-is checked before posting: it must be short, must not mention AI, bots, models or
-humans, must not claim to be real, and must not repeat an earlier message. If anyone
-recently asks about AI or bots, the AI posts a scripted deflection instead of calling
-the model. Prompts and the model are listed in `ai_prompts.md`.
+is checked before posting only for form (one short line, not a repeat) and for a plain
+admission of being an AI, which is replaced by a scripted line. Questions such as
+"are you a bot?" are answered by the model in its own words, in context. The AI
+never votes for itself unless `allow_self_vote` is true, including in the scripted
+fallback. Prompts and the model are listed in `ai_prompts.md`.
 
 ## Configuration
 
@@ -122,3 +125,7 @@ The log contains roles, so `/internal/...` is not proxied to the browser.
   human connects, so a participant who waits a long time can tell that at least one
   other player is a human. A scheduled start time would hide this in a real
   deployment.
+- **A determined participant may still catch the AI.** The AI is made hard to tell
+  apart (short casual messages, typing-like delays, no admission, varied answers to
+  direct questions), but someone who probes it, or who studies its timing, brevity
+  and style across a run, may still work out which seat is the AI.

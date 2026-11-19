@@ -323,6 +323,13 @@ class Engine:
                 }
                 for number, m in enumerate(messages, start=1)
             ],
+            "vote_options": [
+                label
+                for slot, label in LABELS.items()
+                if self._config.allow_self_vote or slot != row["slot"]
+            ]
+            if started
+            else None,
             "ballots_cast": ballots_cast,
             "own_vote": own_vote,
             "vote1_totals": vote1_totals,

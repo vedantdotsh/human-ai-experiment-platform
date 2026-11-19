@@ -1,20 +1,19 @@
 import type { Totals } from "../realtime/socket";
 
-// The three candidates are always the three neutral labels.
-const CANDIDATES = ["Player A", "Player B", "Player C"];
-
 type Props = {
+  /** The players this viewer may vote for, as chosen by the server. */
+  options: string[];
   ownVote: string | null;
   ballotsCast: number | null;
   onVote(target: string): void;
 };
 
-export function VotePanel({ ownVote, ballotsCast, onVote }: Props) {
+export function VotePanel({ options, ownVote, ballotsCast, onVote }: Props) {
   return (
     <section>
       <h2>Vote</h2>
-      <p>Choose one player. You may vote for yourself. Your ballot is final.</p>
-      {CANDIDATES.map((label) => (
+      <p>Choose one player. Your ballot is final.</p>
+      {options.map((label) => (
         <button key={label} disabled={ownVote !== null} onClick={() => onVote(label)}>
           {label}
         </button>

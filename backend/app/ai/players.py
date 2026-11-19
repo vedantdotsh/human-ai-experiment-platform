@@ -9,7 +9,7 @@ from psycopg_pool import AsyncConnectionPool
 
 from app.ai import prompts
 from app.ai.provider import MistralProvider, ProviderError
-from app.ai.scripted import ASKS_ABOUT_TYPE, fallback_ballot, pick_line
+from app.ai.scripted import fallback_ballot, pick_line
 from app.ai.validation import clean_chat, parse_vote
 from app.experiment.errors import Rejected
 from app.experiment.phases import LABELS, duration_seconds, phase_at
@@ -143,22 +143,17 @@ class AiPlayers:
         self, session_id: UUID, seat: AiSeat, round_number: int, context: Context, budget: float
     ) -> tuple[str, dict]:
         previous = [text for _, text in context.messages]
-        # If anyone recently asked what the players are, never let the model answer:
-        # a scripted deflection cannot hint at it.
-        asked = next(
-            (t for a, t in reversed(context.messages[-3:]) if a != seat.label and ASKS_ABOUT_TYPE.search(t)),
-            None,
-        )
         reason = "no_key"
-        if self._provider is not None and asked is not None:
-            reason = "type_question"
-        elif self._provider is not None:
+        if self._provider is not None:
             reason = "no_time"
             if budget >= 1.0:
                 try:
                     raw = await asyncio.wait_for(
                         self._provider.complete(
-                            prompts.SYSTEM.format(own_label=seat.label),
+                            prompts.SYSTEM.format(
+                                own_label=seat.label,
+                                self_vote_note=prompts.self_vote_note(self._config.allow_self_vote),
+                            ),
                             prompts.CHAT.format(
                                 transcript=prompts.transcript(context.messages, seat.label),
                                 round_note=prompts.round_note(round_number, context.vote1_totals),
@@ -179,9 +174,7 @@ class AiPlayers:
                 except ProviderError as exc:
                     reason = exc.reason
         others = [label for label in LABELS.values() if label != seat.label]
-        last_other = asked or next(
-            (t for a, t in reversed(context.messages) if a != seat.label), None
-        )
+        last_other = next((t for a, t in reversed(context.messages) if a != seat.label), None)
         used = self._used_lines.setdefault(session_id, set())
         line = pick_line(
             round_number, seat.label, others, last_other, not context.messages, used, previous, self._rng
@@ -214,6 +207,9 @@ class AiPlayers:
     async def _choose(
         self, seat: AiSeat, round_number: int, context: Context, budget: float
     ) -> tuple[str, dict]:
+        allow_self = self._config.allow_self_vote
+        options = [l for l in LABELS.values() if allow_self or l != seat.label]
+        self_note = prompts.self_vote_note(allow_self)
         reason = "no_key"
         if self._provider is not None:
             reason = "no_time"
@@ -221,10 +217,14 @@ class AiPlayers:
                 try:
                     raw = await asyncio.wait_for(
                         self._provider.complete(
-                            prompts.SYSTEM.format(own_label=seat.label),
+                            prompts.SYSTEM.format(
+                                own_label=seat.label, self_vote_note=self_note
+                            ),
                             prompts.VOTE.format(
                                 transcript=prompts.transcript(context.messages, seat.label),
                                 round_note=prompts.round_note(round_number, context.vote1_totals),
+                                self_vote_note=self_note,
+                                options=", ".join(options),
                             ),
                             max_tokens=10,
                             temperature=0.3,
@@ -232,7 +232,7 @@ class AiPlayers:
                         ),
                         budget,
                     )
-                    target = parse_vote(raw)
+                    target = parse_vote(raw, options)
                     if target:
                         return target, {"source": "llm", "model": self._provider.model}
                     reason = "unusable"
@@ -241,7 +241,7 @@ class AiPlayers:
                 except ProviderError as exc:
                     reason = exc.reason
         authors = [author for author, _ in context.messages]
-        return fallback_ballot(seat.label, authors, self._rng), {
+        return fallback_ballot(seat.label, authors, allow_self, self._rng), {
             "source": "scripted",
             "fallback_reason": reason,
         }

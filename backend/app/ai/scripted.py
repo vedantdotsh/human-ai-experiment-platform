@@ -15,7 +15,7 @@ OPENERS = [
 ROUND_ONE = [
     "i guess we pick whoever seems most sensible", "does anyone have a strategy or are we winging it",
     "honestly i'd go with whoever's been most active", "i don't really mind who it is",
-    "should we vote for ourselves or is that cheating", "i'm leaning towards picking someone random tbh",
+    "i'm leaning towards picking someone random tbh",
     "let's not overthink this", "i'll just go with my gut when voting", "anyone else find the timer stressful",
     "{p} you've been quiet, what do you think", "what's your reasoning so far {p}", "i kind of like {p}'s approach",
     "{p} seems pretty sensible so far", "not sure yet who i'll pick", "what makes someone a good decision maker anyway",
@@ -49,6 +49,10 @@ DEFLECTIONS = [
     "not getting into that, let's focus on the vote", "haha what makes you ask", "doesn't change who we vote for does it",
     "ok that's random, anyway", "i could ask you the same", "let's just stick to the decision",
     "ha nice try, back to the vote", "why are you asking that", "that's not really the point here",
+    "uh, random. anyway who are we picking", "you ask the strangest things", "lol is that your strategy",
+    "can we talk about the vote instead", "what would that change though", "ok but who are you voting for",
+    "haha you first", "pretty sure that isn't in the rules", "weird question but sure, whatever",
+    "i came here to vote not to be interrogated", "right, so about the vote", "ha what, no. who do you like",
 ]
 
 # A message asking about what someone is, however it is worded.
@@ -101,10 +105,10 @@ def _fill(line: str, others: list[str], rng: random.Random) -> str:
 
 
 def fallback_ballot(
-    own_label: str, message_authors: list[str], rng: random.Random
+    own_label: str, message_authors: list[str], allow_self_vote: bool, rng: random.Random
 ) -> str:
     """A ballot weighted toward whoever has spoken more, so it follows the chat a
-    little. Voting for oneself is allowed."""
-    labels = ["Player A", "Player B", "Player C"]
+    little. Never names the voter when self-voting is off."""
+    labels = [l for l in ("Player A", "Player B", "Player C") if allow_self_vote or l != own_label]
     weights = [1 + message_authors.count(label) for label in labels]
     return rng.choices(labels, weights=weights, k=1)[0]
