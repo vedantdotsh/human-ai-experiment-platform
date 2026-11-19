@@ -67,3 +67,15 @@ docker compose exec backend python -c "import urllib.request; print(urllib.reque
 ```
 
 The log contains roles, so `/internal/...` is not proxied to the browser.
+
+## Known limitations
+
+- **Several seats held by one person.** Enrollment is tab-based with no participant
+  identity, so someone who opens several tabs in one run can tell when it starts
+  and work out which seats are AI. The experiment assumes one seat per participant
+  in a real session; preventing this would need participant identification, which
+  is out of scope.
+- **Long waits reveal a human.** The run starts a few random seconds after the last
+  human connects, so a participant who waits a long time can tell that at least one
+  other player is a human. A scheduled start time would hide this in a real
+  deployment.

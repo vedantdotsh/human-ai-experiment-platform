@@ -86,6 +86,8 @@ The browser uses server time and deadlines to display the countdown. The server 
 | LLM-written chat and chat-based votes, with scripted fallback | Scripted players for every run | Adapts to the discussion while keeping the experiment runnable through provider failures or without a key. |
 | SQL and an internal JSON endpoint | A researcher dashboard or browser log | Gives the operator inspectable data without exposing join and disconnect records to participants. |
 | Three automated winner tests and manual checks for the rest | Automated browser and integration suites | Concentrates the four-hour test budget on the outcome rules while preserving manual end-to-end verification. |
+| Tab-based enrollment with no participant identity | Participant identification to enforce one seat per person | The demo needs several tabs on one machine. A person who controls several seats in one run can work out the AI seats from when the run starts, which is accepted as out of scope. A real participant holds one seat, and preventing this needs participant identity. |
+| Start a few random seconds after the last human connects | A scheduled start time | A participant who waits a long time can tell that at least one other player is a human, because the run starts only once the humans arrive. A scheduled start time would hide this in a real deployment, but the tab demo needs prompt starts. |
 
 ## Six build steps
 
