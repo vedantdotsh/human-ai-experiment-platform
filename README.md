@@ -2,72 +2,72 @@
 
 # Three-Player Decision Maker Experiment
 
-A local web experiment. Three players (Player A, B and C) chat for two timed rounds,
-vote after each round, and the votes pick a **Decision Maker**. Depending on the
-condition, some of the seats are people (each in their own browser tab) and some are
-AI players. The server owns the state and the clock; the browser only displays and
-submits. Everything runs locally from one Docker Compose command.
+I built this local experiment to see how a group chooses a Decision Maker. Three
+players (A, B and C) chat for two timed rounds and vote after each one. The condition
+sets how many seats go to people and how many go to AI. Each person uses their own
+browser tab. The FastAPI server keeps the state and the clock. The React and
+TypeScript frontend runs in Vite and uses WebSockets to show updates and send actions.
 
-- **Stack:** React + TypeScript (Vite) frontend, FastAPI backend, Postgres 16, WebSockets.
-- **Blind by design:** a player never sees player types or how many AI seats exist, and
-  learns their own label ("Player A/B/C") only when the run starts.
-- **Auditable:** every accepted message, ballot, phase change, join and disconnect is
-  written to an ordered, timestamped Postgres log.
+The app never sends player types or the number of AI seats to a browser. See
+[Known limitations](#known-limitations) for what players can still work out.
 
-## Run it (one command)
+## Run locally
 
-Requires Docker with Compose. From the repository root:
+Start Docker Desktop (or Docker Engine) with Compose v2. Run the commands in Bash
+or Git Bash from the repository root:
 
 ```bash
 docker compose up --build -d --wait
 ```
 
-That builds and starts Postgres, the backend and the frontend, and returns when all
-three are healthy. Then open <http://localhost:5173>. Check the API with:
+The command builds and starts the app with Postgres 16 and waits for all services
+to be healthy. Open <http://localhost:5173>. To check the API, run the command below.
+In Windows PowerShell, use `curl.exe` instead of `curl`.
 
 ```bash
 curl -fsS http://localhost:5173/api/health
 # {"status":"ok","database":"ok"}
 ```
 
-Stop with `docker compose down`. Add `-v` (`docker compose down -v`) to also delete
-the database volume and start completely clean. Only the frontend is published
-(on `127.0.0.1:5173`); the backend and database are reachable only inside the
-Compose network.
+Use `docker compose down` to stop the app. Use `docker compose down -v` if you also
+want to delete the database volume and start clean. Compose publishes only the
+frontend on `127.0.0.1:5173`. The backend and database stay on the Compose network.
 
-AI players work without any setup (scripted lines). To let them use a language model,
+The AI players use scripted lines without any extra setup. To use a language model,
 see [AI players and the API key](#ai-players-and-the-api-key).
 
-## The tab demo
+## Try a run
 
-Open the app in as many **separate tabs** as the current condition needs; each tab is
-one participant (its seat token lives in that tab's session storage).
+Open a fresh tab for each human seat in the current condition. Don't duplicate a
+tab: that copies its seat token from session storage and gives you the same seat.
 
-1. A tab claims a random open human seat in the next waiting run and shows only
-   "Waiting for other participants", whoever has or has not arrived.
-2. When every human seat is taken and connected, the run starts after a random delay
-   (`start_delay_*_seconds`). Each player now sees their own label.
-3. **Round 1 discussion** (`chat_seconds`, default 60 s) → **Round 1 voting**
-   (`vote_seconds`, default 20 s) → **Round 2 discussion** → **Round 2 voting** →
-   **Results**. Chat is open only during discussion; round 1 chat stays visible in
-   round 2.
-4. In voting each player casts one final ballot for one of the *other* two players
-   (see `allow_self_vote`). Only the number of ballots cast is shown. Voting closes
-   early once all three seats have voted; missing ballots count as abstentions at the
-   deadline. After round 1 everyone sees the per-player totals.
-5. The Decision Maker is the player with the most round 2 votes; a tie is broken by
-   round 1 votes, and a remaining tie by a random pick stored with the run. Players
-   see the winner and the totals, never individual ballots.
+1. Each tab claims a random open human seat in the next waiting run. The room says
+   "Waiting for other participants" no matter who has arrived.
+2. Once all human seats are taken and connected, the server waits a random amount
+   of time (`start_delay_*_seconds`) and starts the run. Each player then sees their
+   own label, such as "Player A".
+3. Each round starts with discussion (`chat_seconds`, default 60 s), then moves to
+   voting (`vote_seconds`, default 20 s). Players can post only during discussion,
+   but round 1 chat stays visible in round 2. Results follow the second vote.
+4. Each player casts one final ballot for one of the other two players by default
+   (see `allow_self_vote`). During voting, players see how many ballots are in and
+   see their own vote, but not anyone else's. The vote ends early if all three seats
+   vote. Missing ballots at the deadline count as abstentions. After round 1,
+   everyone sees the totals for each player.
+5. The player with the most round 2 votes becomes the Decision Maker. If there's a
+   tie, round 1 votes decide it. If there's still a tie, the server picks at random
+   from the remaining tied players and saves the choice with the run. Players see
+   the winner and the round 2 totals, not other players' individual ballots.
 
-Refreshing a tab reclaims the same seat and shows the same state and result.
-**Leave** (waiting room only) frees the seat at once; closing a waiting tab frees it
-after `waiting_grace_seconds`. A player who disconnects mid-run keeps their seat and
-the run carries on. The server advances every phase even with all tabs closed.
+Refresh to reclaim the same seat and see the run's state or result. In the waiting
+room, the Leave button frees the seat immediately. Closing a waiting tab frees it
+after `waiting_grace_seconds`. Once a run starts, a disconnected player keeps their
+seat. The server keeps advancing phases even if all tabs are closed.
 
 ## Conditions and how to switch
 
-The condition is set by `humans` and `ai` in [`config.yml`](config.yml). The shipped
-default is **2 humans + 1 AI**.
+Set `humans` and `ai` in [`config.yml`](config.yml) to choose a condition. The
+default is 2 humans and 1 AI.
 
 | Condition | `humans` | `ai` | Tabs to open |
 | --- | ---: | ---: | ---: |
@@ -75,18 +75,17 @@ default is **2 humans + 1 AI**.
 | 3 humans | 3 | 0 | 3 |
 | 1 human + 2 AI | 1 | 2 | 1 |
 
-To switch, edit those two lines in `config.yml`, then reload the config by
-recreating the backend:
+After editing those two lines, recreate the backend:
 
 ```bash
 docker compose up -d --force-recreate backend
 ```
 
-The backend reads `config.yml` once at startup, so this command is required after any
-change. (Use `--force-recreate`, not plain `restart`: the file is bind-mounted and an
-editor that replaces the file can leave a restarted container looking at the old one.)
-Any run still in progress is ended; see [Restarts](#restarts). Seat roles are shuffled
-for every run, so the same condition gives a different seat layout each time.
+The backend reads `config.yml` only at startup, so run this after any config change.
+Use `--force-recreate`, not `restart`. The file is bind-mounted, so if your editor
+replaces it, a restarted container can still see the old file. Recreating the backend
+ends unfinished runs (see [Restarts](#restarts)). The server shuffles the seat layout
+at random for each run.
 
 Other settings in `config.yml`:
 
@@ -100,88 +99,88 @@ Other settings in `config.yml`:
 | `ai_model` | `mistral-small-latest` | Model the AI players use when a key is set |
 | `ai_call_timeout_seconds` | 8 | Longest a model call may take before the scripted fallback |
 
-For a quick demo shorten the two durations and the start delay (for example 15, 10
-and 2), recreate the backend, and restore the defaults afterwards.
+For a quick demo, try 15 seconds for chat and 10 for voting. Set both start delay
+values to 2 and recreate the backend. Restore the defaults afterwards.
 
 ## AI players and the API key
 
-AI seats chat two or three times per discussion and vote once per round, at random
-times inside the phase, with a typing-like delay before each message. They use the
-same validation and persistence as human actions.
+Each AI player attempts two or three messages per discussion and one vote per round.
+It acts at random times within the phase and pauses before sending a message to
+mimic typing. The server checks and saves its actions the same way it does for people.
 
-They call [Mistral](https://console.mistral.ai/api-keys) from the backend only. Put the
-key in a git-ignored `.env` file next to `compose.yaml` (copy `.env.example`):
+Only the backend calls [Mistral](https://console.mistral.ai/api-keys). Copy `.env.example`
+to the git-ignored `.env` next to `compose.yaml` and put the key there:
 
 ```bash
 cp .env.example .env        # then set MISTRAL_API_KEY=...
 docker compose up -d --force-recreate backend
 ```
 
-Without a key, or when a call fails, times out or returns unusable text, the AI falls
-back to a large pool of varied scripted lines and a ballot weighted toward who has
-spoken. The model's reply is checked only for form (one short line, not a repeat) and
-for a plain admission of being an AI, which is replaced by a scripted line; how it
-answers "are you a bot?" is left to the prompt. With `allow_self_vote: false` the AI
-never votes for itself, including in the fallback. Every AI action records its source
-(`llm` or `scripted`) and any fallback reason in the event log. The prompts and model
-are listed in [`ai_prompts.md`](ai_prompts.md).
+If there's no key or a model call fails, times out or returns unusable text, the
+AI draws from a large pool of scripted lines and gives more weight to players who
+have spoken when it votes. The server checks chat replies for a single short line
+that doesn't repeat an earlier one. It replaces an outright admission of being AI
+with a scripted line, but leaves how to answer "are you a bot?" to the prompt. With
+`allow_self_vote: false`, the AI can't vote for itself, even in the fallback. The
+event log records whether each accepted AI action came from `llm` or `scripted` and
+why it fell back, if it did.
+
+I used AI coding assistants while building the app. I recorded their prompts, along
+with the prompts and model the AI players use, in [`ai_prompts.md`](ai_prompts.md).
 
 ## Event log
 
-Postgres keeps three tables, created at backend startup: `sessions` (one row per run,
-including its config snapshot and persisted winner), `participants` (seats, with the
-private role) and `experiment_events` (the ordered log). Previous runs stay queryable.
+The backend creates three Postgres tables at startup. `sessions` keeps one row per
+run with its config snapshot and winner. `participants` stores the seats and their
+private roles. `experiment_events` keeps the ordered log. You can query past runs.
 
-**1. Find a session** (newest first):
-
-```bash
-docker compose exec db psql -U experiment -d experiment -c \
-  "SELECT id, status, phase, config->>'humans' AS humans, config->>'ai' AS ai, winner_slot, created_at FROM sessions ORDER BY created_at DESC LIMIT 5"
-```
-
-**2. Read its events in SQL** (replace `<session_id>`):
+Find a session (newest first):
 
 ```bash
-docker compose exec db psql -U experiment -d experiment -c \
-  "SELECT e.seq, e.ts, e.phase_seq, e.event_type, p.slot, p.role, e.payload FROM experiment_events e LEFT JOIN participants p ON p.id = e.actor_id WHERE e.session_id = '<session_id>' ORDER BY e.seq"
+docker compose exec db psql -U experiment -d experiment -c "SELECT id, status, phase, config->>'humans' AS humans, config->>'ai' AS ai, winner_slot, created_at FROM sessions ORDER BY created_at DESC LIMIT 5"
 ```
 
-**3. Or as ordered JSON** from inside the Compose network:
+Read its events in SQL (replace `<session_id>`):
+
+```bash
+docker compose exec db psql -U experiment -d experiment -c "SELECT e.seq, e.ts, e.phase_seq, e.event_type, p.slot, p.role, e.payload FROM experiment_events e LEFT JOIN participants p ON p.id = e.actor_id WHERE e.session_id = '<session_id>' ORDER BY e.seq"
+```
+
+Or read them as ordered JSON from inside the Compose network:
 
 ```bash
 docker compose exec backend python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/internal/sessions/<session_id>/events').read().decode())"
 ```
 
-Event types are `message`, `vote`, `phase_change`, `join` and `disconnect`; `seq` is
-gap-free per run and `ts` is server UTC. Rejected attempts are never logged. The log
-and the `participants` table contain roles and join/disconnect records, so
-`/internal/...` is deliberately not proxied to browsers (through the frontend it
-returns 404) and the backend port is unpublished.
+The log records each accepted `message` and `vote`, along with `phase_change`, `join`
+and `disconnect` events. The `seq` numbers have no gaps within a run, and `ts` is the
+server's UTC timestamp. Rejected attempts don't enter the event log. The log and seat records
+reveal roles and when people join or disconnect. The frontend returns 404 for
+`/internal/...` instead of proxying it, and Compose doesn't publish the backend port.
 
 ## Tests
 
-Three automated tests cover the Decision Maker rules: a clear round 2 winner, a round 2
-tie settled by round 1, and a tie after round 1 settled by a controlled random pick.
+I wrote three automated tests for the Decision Maker rules. They check a clear round
+2 winner and both tiebreaks: round 1 votes and a controlled random pick.
 
 ```bash
 docker compose exec -T backend python -m unittest discover -s tests -v
 ```
 
-Everything else is checked by hand; each build step's evidence is in
+I checked the rest by hand and kept the evidence for each build step in
 [`reviews/`](reviews/).
 
 ## Restarts
 
-Restarting or recreating the backend ends every unfinished run: on startup each is
-marked `abandoned` and a `phase_change` event records it, and the logs are kept.
-Players in those runs see "This run is no longer available". Seat tokens and timers
-live in the backend's memory, so runs cannot be resumed; **start a fresh run** by
-opening a new tab (or choosing "Join a new run").
+Restarting or recreating the backend ends every unfinished run. On startup the server
+marks those runs `abandoned`, adds a `phase_change` event and keeps the logs. Players
+see "This run is no longer available". Seat tokens and timers live in memory, so the
+old runs can't resume. Open a fresh tab or choose "Join a new run" to start again.
 
 ## Design decisions and tradeoffs
 
-The choices below come from the build plan ([`plan.md`](plan.md)); the right-hand column
-is the reason each was made.
+I kept the alternatives and my reasons for each choice in the build plan
+([`plan.md`](plan.md)).
 
 | Chosen | Alternative | Why |
 | --- | --- | --- |
@@ -199,78 +198,60 @@ is the reason each was made.
 | No self votes by default (`allow_self_vote: false`) | Allow players to vote for themselves | I chose no self votes because it forces players to persuade each other and the alternative let everyone pick themselves and leave the result to chance. |
 | An engaging look (option H: breathing waiting shape, countdown ring, animated vote reveal and podium) | A neutral, plain interface | I chose an engaging look over a neutral one; a real study would probably tone down the result reveal. |
 
-A few of these deserve more explanation:
+I use one lock per run for seat claims, ballots and event numbering. A separate
+process lock covers finding or creating the next open session and claiming a seat
+in it. The backend commits changes to the database and event log together before
+broadcasting them. It stores and enforces deadlines for each run, and the browser
+uses server time to display the same voting and discussion windows for everyone.
 
-- **One backend process, in-memory locks.** Correctness of seat claims, ballots and
-  event numbering comes from one lock per run plus a short process-level lock for
-  "find or create the next open session". That is simple and enough for a local demo,
-  and it is why the backend must run as a single process (see below). Database
-  state and its events are committed together, then broadcast, so a socket never sees
-  something the log does not hold.
-- **The server is the clock.** Deadlines are stored with the run and enforced by the
-  server; browsers only display a countdown from server time. That is what lets a run
-  finish through a disconnect and makes every player's window identical.
-- **Totals reveal a little.** Showing per-player totals means a voter can sometimes
-  infer others' ballots by subtracting their own. It was accepted because the totals
-  give round 2 something to discuss and the alternative (winner only) removes that.
-- **Blindness over convenience.** Join responses carry only an opaque token, labels
-  appear only at the start, chat numbers count chat only, and seats are drawn at
-  random, all so a browser cannot work out who is an AI from field names, counts or
-  ordering. The costs are in the limitations below.
+A join response contains an opaque seat token and the current phase. Chat messages
+have their own numbering, separate from the event log. Together with random seats
+and labels that only appear when play starts, this keeps the payload fields, counts
+and ordering from directly identifying AI players.
 
 ## What several backend processes would need
 
-The backend is built to run as exactly one process. Its coordination state lives in
-that process's memory: the per-run locks, the seat-token map, the registry of open
-WebSockets, the phase timers and the AI schedulers. With several processes behind a
-load balancer each would hold its own copy, and things would break:
+I kept the backend to one process for the local demo. Locks and seat tokens live
+in memory, as do open WebSocket records, phase timers and AI schedulers. Behind a
+load balancer, each process would have its own copy. To run more than one:
 
-- **Locks.** Two processes could both claim the last seat, accept a second ballot, or
-  hand out the same event sequence number. The in-memory locks would have to become
-  shared: Redis locks, or Postgres row locks / advisory locks (`SELECT ... FOR UPDATE`,
-  `pg_advisory_xact_lock`) around seat claims, messages, votes and phase changes. The
-  "find or create the next open session" step would need the same.
-- **Seat tokens** would have to be stored somewhere every process can read (Redis or a
-  table), not in one process's dictionary.
-- **Sockets.** A message accepted by one process must reach browsers connected to
-  another, so broadcasts need a shared channel such as Redis pub/sub (or Postgres
-  `LISTEN/NOTIFY`).
-- **Timers and AI turns.** A phase must advance exactly once. Timers and AI schedulers
-  would need a single owner per run (leader election or a job queue) instead of every
-  process running its own.
+- Share locks for seat claims, messages, votes and phase changes using Redis or
+  Postgres row or advisory locks (`SELECT ... FOR UPDATE`, `pg_advisory_xact_lock`).
+  Otherwise two processes could claim the last seat, accept a second ballot or use
+  the same event sequence number. Finding or creating a waiting run also needs a
+  shared lock.
+- Put seat tokens in Redis or a table every process can read.
+- Send broadcasts over Redis pub/sub or Postgres `LISTEN/NOTIFY` so messages can
+  reach browsers connected to any process.
+- Give timers and AI turns one owner per run through leader election or a job
+  queue, so each phase advances only once.
 
-Redis (locks, token store, pub/sub) plus row locks for the log would cover all of it;
-that is a larger system than this project needs.
+Redis could handle locks, tokens and broadcasts alongside row locks for the log.
+I left that setup out because the local demo doesn't need it.
 
 ## Known limitations
 
-- **Several seats held by one person.** Enrollment is tab-based with no participant
-  identity, so someone who opens several tabs in one run can tell when it starts and
-  work out which seats are AI. The experiment assumes one seat per participant in a
-  real session; preventing this would need participant identification, which is out
-  of scope.
-- **Long waits reveal a human.** The run starts a few random seconds after the last
-  human connects, so a participant who waits a long time can tell that at least one
-  other player is a human. A scheduled start time would hide this in a real
-  deployment.
-- **A determined participant may still catch the AI.** The AI is made hard to tell
-  apart (short casual messages, typing-like delays, no admission, varied answers to
-  direct questions), but someone who probes it, or who studies its timing, brevity
-  and style across a run, may still work out which seat is the AI.
-- **Vote totals leak a little.** A voter can sometimes work out other ballots by
-  subtracting their own vote from the totals.
-- **Local demo, not a deployment.** One backend process; the frontend is the Vite dev
-  server; no authentication; default database credentials; the internal log endpoint
-  is protected only by network isolation. The socket token travels in the WebSocket
-  query string, so it appears in the backend's access log (tokens last only until the
-  backend restarts).
-- **Seats are per tab.** A closed tab cannot reclaim its seat (its session storage is
-  gone), so a player who closes a running tab cannot rejoin that run; refresh is fine.
-  After a run ends a tab stays on the results; open a new tab for another run.
-- **Restarts end runs.** See [Restarts](#restarts).
-- **AI quality depends on the provider.** Without a key, or when calls fail, the AI
-  uses scripted lines, which are weaker than model output. One provider and model are
-  supported.
+- Someone who takes several seats in one run can use the start timing to work out
+  which seats are AI. A real session assumes one seat per person. I didn't add
+  participant identification to enforce that.
+- Someone who waits a long time can tell at least one other player is human. The
+  server starts the run a few random seconds after the last human connects. A
+  scheduled start would hide this in a real deployment.
+- I gave AI players short, casual messages and typing-like pauses. The prompt tells
+  them not to say they're AI and to vary their answers to direct questions. A player
+  who probes them or watches their timing, brevity and style can still spot them.
+- Players can sometimes work out other ballots by subtracting their own vote from
+  the totals.
+- This is a local demo. It runs one backend process and the Vite dev server, with
+  no authentication and default database credentials. Only network isolation
+  protects the internal log endpoint. Seat tokens go in the WebSocket query string,
+  so they appear in the backend access log. They last no longer than a restart.
+- Closing a tab loses its session storage. You can refresh a running tab, but if
+  you close it you can't rejoin its seat. A finished tab stays on the results, so
+  open a fresh tab for the next run.
+- Restarting the backend ends unfinished runs. See [Restarts](#restarts).
+- The app supports one provider and one model at a time. Without a key or when calls
+  fail, it uses scripted lines, which are weaker than the model's replies.
 
 ## Repository layout
 
