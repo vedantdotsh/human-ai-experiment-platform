@@ -1,55 +1,41 @@
-import { useCallback, useEffect, useState } from "react";
-import { join, leave } from "./api";
+type Props = {
+  status: "joining" | "joined" | "left" | "ended" | "error";
+  error: string | null;
+  onLeave(): void;
+  onJoin(): void;
+};
 
-type State =
-  | { kind: "joining" }
-  | { kind: "waiting" }
-  | { kind: "left" }
-  | { kind: "error"; message: string };
-
-export function WaitingRoom() {
-  const [state, setState] = useState<State>({ kind: "joining" });
-
-  const claim = useCallback(() => {
-    setState({ kind: "joining" });
-    return join().then(
-      () => setState({ kind: "waiting" }),
-      (err: Error) => setState({ kind: "error", message: err.message }),
-    );
-  }, []);
-
-  useEffect(() => {
-    void claim();
-  }, [claim]);
-
-  const release = () =>
-    leave().then(
-      () => setState({ kind: "left" }),
-      (err: Error) => setState({ kind: "error", message: err.message }),
-    );
-
-  switch (state.kind) {
+// The waiting room shows one generic line and nothing else about who is here.
+export function WaitingRoom({ status, error, onLeave, onJoin }: Props) {
+  switch (status) {
     case "joining":
       return <p>Joining…</p>;
-    case "waiting":
+    case "joined":
       return (
         <>
           <p>Waiting for other participants</p>
-          <button onClick={release}>Leave</button>
+          <button onClick={onLeave}>Leave</button>
         </>
       );
     case "left":
       return (
         <>
           <p>You left the waiting room.</p>
-          <button onClick={() => void claim()}>Join again</button>
+          <button onClick={onJoin}>Join again</button>
+        </>
+      );
+    case "ended":
+      return (
+        <>
+          <p>This run is no longer available.</p>
+          <button onClick={onJoin}>Join a new run</button>
         </>
       );
     case "error":
       return (
         <>
-          <p>Not ready: {state.message}</p>
-          <button onClick={() => void claim()}>Retry</button>
+          <p>Not ready: {error}</p>
+          <button onClick={onJoin}>Retry</button>
         </>
       );
   }

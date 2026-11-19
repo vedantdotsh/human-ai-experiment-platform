@@ -12,10 +12,21 @@ Requires Docker with Compose. From the repository root:
 docker compose up --build -d --wait
 ```
 
-Then open <http://localhost:5173>. Each tab claims a seat in the next open
-waiting session and shows "Waiting for other participants". The seat token is
-kept per tab in session storage, so a refresh reclaims the same seat; **Leave**
-releases it immediately. Check the health endpoint with:
+Then open <http://localhost:5173> in as many tabs as the condition needs (three
+for `humans: 3`; two for the default 2 humans + 1 AI). Each tab claims a seat in
+the next open waiting session and shows only "Waiting for other participants".
+The seat token is kept per tab in session storage, so a refresh reclaims the same
+seat; **Leave** releases it immediately, and closing a waiting tab releases its
+seat after `waiting_grace_seconds`. Once every human is connected the run starts
+after a random delay, and each player first learns their own label ("Player A/B/C")
+at that moment. The run then goes: round 1 discussion, round 1 voting, round 2
+discussion, round 2 voting, results. The server owns the clock, so it advances
+even with every tab closed; a player who disconnects mid-run keeps their seat and
+the run continues. Chat is open only during discussion. (Ballots and the winner
+arrive in a later step; this build ends at an empty results phase.)
+
+For a quick demo, shorten `chat_seconds`, `vote_seconds` and the start delay in
+`config.yml`. Check the health endpoint with:
 
 ```bash
 curl -fsS http://localhost:5173/api/health

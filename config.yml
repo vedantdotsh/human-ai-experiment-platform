@@ -6,3 +6,8 @@ humans: 2
 ai: 1
 chat_seconds: 60
 vote_seconds: 20
+# Once every human is present, wait a random time in this range before starting.
+start_delay_min_seconds: 3
+start_delay_max_seconds: 8
+# How long a waiting-room seat survives a closed socket (lets a refresh reconnect).
+waiting_grace_seconds: 5

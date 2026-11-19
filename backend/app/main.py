@@ -9,6 +9,10 @@ from psycopg_pool import AsyncConnectionPool
 
 from app.db import abandon_unfinished_runs, init_schema
 from app.event_log.routes import router as event_log_router
+from app.experiment.engine import Engine
+from app.messaging.service import MessageService
+from app.realtime.hub import Hub
+from app.realtime.routes import router as realtime_router
 from app.session.config import load_config
 from app.session.routes import router as session_router
 from app.session.service import SeatService
@@ -32,14 +36,20 @@ async def lifespan(app: FastAPI):
     await init_schema(pool)
     await abandon_unfinished_runs(pool)
     app.state.pool = pool
-    app.state.seats = SeatService(pool, config)
+    hub = Hub()
+    seats = SeatService(pool, config)
+    app.state.seats = seats
+    app.state.engine = Engine(pool, config, seats, hub)
+    app.state.messages = MessageService(pool, seats, hub)
     yield
+    await app.state.engine.shutdown()
     await pool.close()
 
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(session_router)
 app.include_router(event_log_router)
+app.include_router(realtime_router)
 
 
 def check_database() -> None:

@@ -2,6 +2,7 @@ import asyncio
 import random
 import secrets
 from dataclasses import dataclass
+from typing import Protocol
 from uuid import UUID, uuid4
 
 from psycopg.types.json import Jsonb
@@ -19,8 +20,20 @@ class Seat:
     phase: str
 
 
+@dataclass(frozen=True)
+class SeatInfo:
+    session_id: UUID
+    participant_id: UUID
+
+
 class LeaveRejected(Exception):
     """The run has started, so the seat can no longer be released."""
+
+
+class SeatListener(Protocol):
+    def seat_claimed(self, session_id: UUID, participant_id: UUID) -> None: ...
+
+    async def seat_released(self, session_id: UUID, participant_id: UUID) -> None: ...
 
 
 class SeatService:
@@ -39,9 +52,14 @@ class SeatService:
         self._process_lock = asyncio.Lock()
         self._session_locks: dict[UUID, asyncio.Lock] = {}
         self._tokens: dict[str, tuple[UUID, UUID]] = {}  # token -> (session, participant)
+        self.listener: SeatListener | None = None
 
     def session_lock(self, session_id: UUID) -> asyncio.Lock:
         return self._session_locks.setdefault(session_id, asyncio.Lock())
+
+    def resolve(self, token: str) -> SeatInfo | None:
+        entry = self._tokens.get(token)
+        return SeatInfo(*entry) if entry else None
 
     async def join(self, token: str | None) -> Seat:
         if token is not None:
@@ -52,13 +70,21 @@ class SeatService:
             session_id = await self._find_open_session()
             if session_id is None:
                 session_id = await self._create_session()
-            return await self._claim_seat(session_id)
+            seat, participant_id = await self._claim_seat(session_id)
+            if self.listener:
+                self.listener.seat_claimed(session_id, participant_id)
+            return seat
 
     async def leave(self, token: str) -> None:
         entry = self._tokens.get(token)
-        if entry is None:
-            return
-        session_id, participant_id = entry
+        if entry is not None:
+            await self.release(*entry, reason="leave", strict=True)
+
+    async def release(
+        self, session_id: UUID, participant_id: UUID, reason: str, strict: bool = False
+    ) -> bool:
+        """Free a waiting-room seat. Returns False when there was nothing to free.
+        With strict, a seat in a started run raises LeaveRejected."""
         async with self.session_lock(session_id):
             async with self._pool.connection() as conn, conn.transaction():
                 cur = await conn.execute(
@@ -71,18 +97,27 @@ class SeatService:
                 )
                 row = await cur.fetchone()
                 if row is None or row["claim_state"] != "claimed":
-                    self._tokens.pop(token, None)
-                    return
+                    self._drop_tokens(participant_id)
+                    return False
                 if row["status"] != "waiting":
-                    raise LeaveRejected
+                    if strict:
+                        raise LeaveRejected
+                    return False
                 await conn.execute(
                     "UPDATE participants SET claim_state = 'open' WHERE id = %s",
                     (participant_id,),
                 )
                 await append_event(
-                    conn, session_id, "disconnect", participant_id, {"reason": "leave"}
+                    conn, session_id, "disconnect", participant_id, {"reason": reason}
                 )
-            self._tokens.pop(token, None)
+            self._drop_tokens(participant_id)
+        if self.listener:
+            await self.listener.seat_released(session_id, participant_id)
+        return True
+
+    def _drop_tokens(self, participant_id: UUID) -> None:
+        for token in [t for t, (_, p) in self._tokens.items() if p == participant_id]:
+            del self._tokens[token]
 
     async def _reclaim(self, token: str) -> Seat | None:
         entry = self._tokens.get(token)
@@ -149,7 +184,7 @@ class SeatService:
             await append_event(conn, session_id, "phase_change", payload={"phase": "waiting"})
         return session_id
 
-    async def _claim_seat(self, session_id: UUID) -> Seat:
+    async def _claim_seat(self, session_id: UUID) -> tuple[Seat, UUID]:
         async with self.session_lock(session_id):
             async with self._pool.connection() as conn, conn.transaction():
                 cur = await conn.execute(
@@ -176,4 +211,4 @@ class SeatService:
                 )
             token = secrets.token_urlsafe(32)
             self._tokens[token] = (session_id, row["id"])
-            return Seat(token, "waiting")
+            return Seat(token, "waiting"), row["id"]

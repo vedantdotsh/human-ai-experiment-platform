@@ -4,7 +4,15 @@ from pathlib import Path
 import yaml
 
 ALLOWED_MIXES = {(2, 1), (3, 0), (1, 2)}  # (humans, ai)
-KEYS = {"humans", "ai", "chat_seconds", "vote_seconds"}
+KEYS = {
+    "humans",
+    "ai",
+    "chat_seconds",
+    "vote_seconds",
+    "start_delay_min_seconds",
+    "start_delay_max_seconds",
+    "waiting_grace_seconds",
+}
 
 
 class ConfigError(Exception):
@@ -17,6 +25,9 @@ class Config:
     ai: int
     chat_seconds: int
     vote_seconds: int
+    start_delay_min_seconds: int
+    start_delay_max_seconds: int
+    waiting_grace_seconds: int
 
     def snapshot(self) -> dict:
         return asdict(self)
@@ -44,7 +55,12 @@ def load_config(path: str) -> Config:
         ai=_int(raw, "ai", 0),
         chat_seconds=_int(raw, "chat_seconds", 1),
         vote_seconds=_int(raw, "vote_seconds", 1),
+        start_delay_min_seconds=_int(raw, "start_delay_min_seconds", 0),
+        start_delay_max_seconds=_int(raw, "start_delay_max_seconds", 0),
+        waiting_grace_seconds=_int(raw, "waiting_grace_seconds", 1),
     )
+    if config.start_delay_max_seconds < config.start_delay_min_seconds:
+        raise ConfigError("config: start_delay_max_seconds must be >= start_delay_min_seconds")
     if (config.humans, config.ai) not in ALLOWED_MIXES:
         raise ConfigError(
             "config: humans/ai must be one of 2/1, 3/0 or 1/2, "
