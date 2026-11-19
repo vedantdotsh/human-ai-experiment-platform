@@ -1,14 +1,26 @@
 # Step Two review
 
-**Blocked before Step Three.** Fix the waiting-room join response first. It exposes a seat-allocation pattern that lets participants infer AI identities and, in some conditions, the AI count.
+**Ready for Step Three.** The waiting-room label leak was fixed in `114bf7b` and passed a targeted recheck in all three configurations.
 
-## Blocking finding
+## Targeted recheck
+
+The join endpoint and frontend response type now expose only `seat_token` and `phase`. The service chooses randomly among open human seats. I tested through the Vite participant proxy in a separate Compose stack for each configuration and verified each mix against the saved Postgres configuration.
+
+| Configured mix | Fresh joins | Same-token reclaims | Result |
+| --- | ---: | ---: | --- |
+| 3 humans, 0 AI | 4 | 4 | Pass |
+| 2 humans, 1 AI | 3 | 3 | Pass |
+| 1 human, 2 AI | 2 | 2 | Pass |
+
+Every response was HTTP 200 with exactly an opaque seat token and the `waiting` phase. New claims returned distinct tokens, and reclaims returned the original response. Each sample filled one run and included the first claim in a second run. No responses included player labels, roles, counts, occupancy, or run identifiers. The recheck covered the original blocker only. The tracked configuration and application code were untouched.
+
+## Original blocking finding (resolved)
 
 - [The join route](../backend/app/session/routes.py#L17) returns `seat_token`, `label`, and `phase`. [Seat allocation](../backend/app/session/service.py#L153) filters for open human seats and takes the lowest numbered slot. On a fresh run, a first response of Player B proves Player A is AI. A first response of Player C proves both Player A and Player B are AI, revealing an exact count of two. Shuffling the roles when the run is created does not prevent this inference.
 - Reproduced on the default configuration. One fresh run returned Player B and then Player C. Another fresh run also returned Player B first, and its Postgres participant rows confirmed Player A was AI and Players B and C were human. The two-AI case follows from the allocation rule and was reviewed in code.
 - Remove the label from waiting-phase join and reclaim responses. The waiting page only needs the opaque seat token. Reveal the participant's own label in the authenticated snapshot once play starts. Randomize selection among available human seats to remove the ordered allocation signal. Before clearing this gate, check fresh joins and reclaims in each configuration and confirm their waiting responses contain no labels, role or count fields, occupancy, or run-grouping identifiers.
 
-## Checks rerun
+## Original review checks
 
 | Check | Result |
 | --- | --- |
